@@ -1,0 +1,55 @@
+TRADING:
+  symbol: "XAUUSD"
+  account_risk_pct: 2.0
+
+INDICATORS:
+  ma_fast: 50
+  ma_slow: 100
+  ad_extreme_threshold: -50000
+  volume_spike_multiplier: 2.0
+  volume_lookback: 20
+
+ENTRY_RULES:
+  min_spike_pips: 80
+  min_spike_candles: 5
+  consolidation_min_candles: 5
+  consolidation_max_range_pips: 20
+
+POSITION_SIZING:
+  max_units_per_trade: 12
+  pyramid_entries: 3
+  pyramid_size_each: 4
+
+EXIT_RULES:
+  scale_out_pct: [25, 25, 25, 25]
+  tp_distances: [15, 30, 60, 120]
+  sl_distance: 25
+  trail_after_pips: 30
+
+SIGNAL:
+  min_signal_interval_seconds: 3600
+  max_price_drift_pips: 50
+
+TELEGRAM:
+  token: "YOUR_BOT_TOKEN"
+  chat_id: "YOUR_CHAT_ID"
+  max_messages_per_min: 5
+  enabled: false
+
+BYBIT:
+  testnet: true
+  api_key: "YOUR_API_KEY"
+  api_secret: "YOUR_API_SECRET"
+
+LOGGING:
+  level: "INFO"
+  file_path: "./logs/"
+  max_file_size_mb: 50
+  backup_count: 5
+
+DATABASE:
+  path: "./database/"
+
+MONITOR:
+  cycle_interval_seconds: 60
+  data_stale_threshold_seconds: 300

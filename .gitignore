@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Local config & secrets
+config.local.yaml
+.env
+.env.*
+
+# Runtime artifacts
+logs/*.log
+logs/*.log.*
+database/*.db
+database/*.db.backup
+*.bak
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
