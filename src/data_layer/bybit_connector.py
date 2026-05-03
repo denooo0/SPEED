@@ -100,6 +100,39 @@ class BybitConnector:
             logger.error("fetch_ticker failed: %s", e)
             return None
 
+    def fetch_funding_rate(self, symbol: str = "XAUUSD") -> Optional[float]:
+        """Latest perp funding rate. Returns None if the exchange/symbol can't supply one."""
+        try:
+            result = self.exchange.fetch_funding_rate(symbol)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("fetch_funding_rate failed: %s", e)
+            return None
+        rate = result.get("fundingRate") if result else None
+        if rate is None:
+            return None
+        try:
+            return float(rate)
+        except (TypeError, ValueError):
+            return None
+
+    def fetch_open_interest(self, symbol: str = "XAUUSD") -> Optional[float]:
+        """Current open interest for a perp."""
+        try:
+            result = self.exchange.fetch_open_interest(symbol)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("fetch_open_interest failed: %s", e)
+            return None
+        if not result:
+            return None
+        for key in ("openInterestAmount", "openInterestValue", "openInterest"):
+            val = result.get(key)
+            if val is not None:
+                try:
+                    return float(val)
+                except (TypeError, ValueError):
+                    continue
+        return None
+
     @staticmethod
     def _candle_to_dict(candle: List[float]) -> Dict[str, float]:
         return {

@@ -24,9 +24,17 @@ class ExitAction:
 class PositionManager:
     """Persists and updates positions in the SQLite store."""
 
-    def __init__(self, db: DatabaseManager, scale_out_pct: List[float] | None = None) -> None:
+    def __init__(
+        self,
+        db: DatabaseManager,
+        scale_out_pct: List[float] | None = None,
+        on_close: Optional[Any] = None,
+    ) -> None:
         self.db = db
         self.scale_out_pct = list(scale_out_pct) if scale_out_pct else [25.0, 25.0, 25.0, 25.0]
+        # Optional close hook: called as on_close(position_dict, trade_events)
+        # Used to write autopsies on full closure.
+        self.on_close = on_close
 
     # -- lifecycle --------------------------------------------------------
     def open_from_signal(
@@ -139,6 +147,7 @@ class PositionManager:
                 tp_targets_remaining=remaining,
                 status="CLOSED",
             )
+            self._fire_close_hook(position)
         elif remaining != position.get("tp_targets_remaining"):
             self.db.update_position(
                 position["position_id"],
@@ -176,3 +185,16 @@ class PositionManager:
             rule_matched=rule,
         )
         logger.info("Closed position %s via %s @ %.2f pnl=%.2f", position["position_id"], rule, price, pnl)
+        self._fire_close_hook(position)
+
+    def _fire_close_hook(self, position: Dict[str, Any]) -> None:
+        if self.on_close is None:
+            return
+        # Refresh from DB so we hand the hook the final persisted state, plus events
+        try:
+            refreshed = self.db.get_position(position["position_id"]) or position
+            events = self.db.get_trades_since(0)
+            events = [e for e in events if e.get("position_id") == position["position_id"]]
+            self.on_close(refreshed, events)
+        except Exception as e:  # noqa: BLE001 — close hook must never crash the loop
+            logger.exception("close hook failed for %s: %s", position.get("position_id"), e)

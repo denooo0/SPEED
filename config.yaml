@@ -41,6 +41,24 @@ BYBIT:
   api_key: "YOUR_API_KEY"
   api_secret: "YOUR_API_SECRET"
 
+ANTHROPIC:
+  api_key: ""              # leave empty to read ANTHROPIC_API_KEY from env
+  model: "claude-opus-4-7"
+  effort: "high"           # low | medium | high | xhigh | max
+  max_tokens: 16000
+  mandate_path: "prompts/ATLAS_MANDATE.md"
+  enabled: false           # flip to true once api_key is set
+
+MEMORY:
+  root: "memory/"
+  digest_window: 30        # autopsies aggregated into digest
+
+GATE:
+  # Cheap rules-based screen. Brain is invoked only when at least one fires.
+  invoke_on_volume_spike: true
+  invoke_on_bos: true
+  invoke_on_session_open: true   # fire once when entering london or ny session
+
 LOGGING:
   level: "INFO"
   file_path: "./logs/"
