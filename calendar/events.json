@@ -1,0 +1,9 @@
+[
+  {
+    "name": "EXAMPLE — replace with real events",
+    "timestamp": 1735689600000,
+    "impact": "high",
+    "source": "manual",
+    "_comment": "Timestamps are UTC milliseconds. Tier-1 = NFP, FOMC, CPI, ECB rate decision, Powell speeches. Update weekly from forexfactory.com or equivalent."
+  }
+]

@@ -3,6 +3,8 @@
 The brain costs money. The gate burns no tokens. Only when the gate fires does
 the brain see this cycle. Faithful to mandate Law 1 (default is NO): a screen
 that says NO 95% of the time IS the discipline.
+
+Also enforces mandate Law 12: no trades within the news-kill window.
 """
 from __future__ import annotations
 
@@ -10,6 +12,8 @@ import logging
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
+
+from src.data_layer.calendar_feed import CalendarFeed
 
 logger = logging.getLogger(__name__)
 
@@ -25,13 +29,26 @@ class GateConfig:
 class CycleGate:
     """Decide whether the current cycle warrants an LLM call."""
 
-    def __init__(self, config: GateConfig) -> None:
+    def __init__(
+        self,
+        config: GateConfig,
+        calendar: Optional[CalendarFeed] = None,
+    ) -> None:
         self.config = config
+        self.calendar = calendar
         self._last_fired_at: float = 0.0
         self._last_session: Optional[str] = None
 
     def should_invoke(self, feature_pack: Dict[str, Any]) -> tuple[bool, str]:
         """Return (decision, reason)."""
+        # Law 12 — news kill takes precedence over everything else.
+        if self.calendar is not None:
+            now_ms = feature_pack.get("now_ms")
+            in_window, event = self.calendar.is_in_news_window(now_ms=now_ms)
+            if in_window:
+                event_name = event.name if event else "unknown"
+                return (False, f"news_kill:{event_name}")
+
         now = time.time()
         if (now - self._last_fired_at) < self.config.cooldown_seconds:
             return (False, "cooldown")

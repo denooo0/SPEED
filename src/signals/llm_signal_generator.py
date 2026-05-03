@@ -112,12 +112,14 @@ class LLMSignalGenerator:
         funding_rate: Optional[float] = None,
         open_interest: Optional[float] = None,
         oi_1h_ago: Optional[float] = None,
+        ws_snapshot: Optional[Dict[str, Any]] = None,
+        cot_snapshot: Optional[Any] = None,
     ) -> Dict[str, Any]:
         pack: Dict[str, Any] = {
             "instrument": self.instrument,
             "now_ms": int(time.time() * 1000),
             "lens_flow": {
-                "m5": flow_feat.extract(candles_m5).to_dict(),
+                "m5": flow_feat.extract(candles_m5, ws_snapshot=ws_snapshot).to_dict(),
                 "m15": flow_feat.extract(candles_m15).to_dict(),
             },
             "lens_structure": {
@@ -127,7 +129,10 @@ class LLMSignalGenerator:
             },
             "lens_context": ctx_feat.extract(candles_m5).to_dict(),
             "lens_intent": intent_feat.extract(
-                funding_rate, open_interest, oi_1h_ago
+                funding_rate=funding_rate,
+                open_interest=open_interest,
+                oi_1h_ago=oi_1h_ago,
+                cot_snapshot=cot_snapshot,
             ).to_dict(),
             "latest_price": {
                 "m5_close": candles_m5[-1]["close"] if candles_m5 else None,
