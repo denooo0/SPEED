@@ -47,16 +47,17 @@ class CycleGate:
 
         ctx = feature_pack.get("lens_context", {})
         session = ctx.get("session")
-        if (
-            self.config.invoke_on_session_open
-            and session in ("london", "ny", "ny-overlap")
-            and session != self._last_session
-        ):
-            triggers.append(f"session_open_{session}")
-
-        # Track session transitions regardless of whether we fired
-        if session is not None:
-            self._last_session = session
+        if self.config.invoke_on_session_open:
+            # Only track session transitions while the trigger is enabled.
+            # Updating `_last_session` while disabled would swallow the first
+            # transition after a runtime flip.
+            if (
+                session in ("london", "ny", "ny-overlap")
+                and session != self._last_session
+            ):
+                triggers.append(f"session_open_{session}")
+            if session is not None:
+                self._last_session = session
 
         if triggers:
             self._last_fired_at = now

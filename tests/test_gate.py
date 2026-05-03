@@ -62,3 +62,22 @@ def test_gate_disable_individual_triggers():
     assert invoke is False
     invoke2, _ = gate.should_invoke(_pack(last_bos="bear"))
     assert invoke2 is True
+
+
+def test_gate_does_not_track_session_when_disabled():
+    """Regression: prior bug — _last_session updated even with trigger off,
+    so flipping the flag on later swallowed the first transition."""
+    gate = CycleGate(
+        GateConfig(invoke_on_session_open=False, cooldown_seconds=0)
+    )
+    # Many cycles in london while session-open trigger is OFF
+    for _ in range(3):
+        invoke, _ = gate.should_invoke(_pack(session="london"))
+        assert invoke is False
+
+    # Operator flips the flag on
+    gate.config.invoke_on_session_open = True
+    # Next cycle in london should NOW fire — _last_session was never set
+    invoke, reason = gate.should_invoke(_pack(session="london"))
+    assert invoke is True
+    assert "session_open_london" in reason

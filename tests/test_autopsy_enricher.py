@@ -178,3 +178,57 @@ def test_enricher_uses_configured_model(memory):
     enricher.enrich(autopsy_path=path, trade_events=[], triggering_sr=None)
     assert client.messages.last_kwargs["model"] == "claude-haiku-4-5"
     assert client.messages.last_kwargs["output_format"] is AutopsyEnrichment
+
+
+def test_enricher_does_not_truncate_on_hash_in_body(memory):
+    """Regression: the old `^## ` regex truncated when body prose contained
+    `## ` (e.g. quoting a price level). The fix bounds replacement to
+    known-header allow-list."""
+    path = _write_templated_autopsy(memory)
+    enrichment = AutopsyEnrichment(
+        what_actually_happened=(
+            "Bounce held at the FVG. Quoting the precise reaction level: "
+            "## 2014.5 was the line. CVD flipped positive immediately after. "
+            "Exit fired clean."
+        ),
+        one_line_lesson="Watch the precise FVG midpoint on M5 for reaction.",
+    )
+    client = _FakeClient(enrichment)
+    enricher = AutopsyEnricher(client=client, config=EnricherConfig(enabled=True))
+    enricher.enrich(autopsy_path=path, trade_events=[], triggering_sr=None)
+
+    text = path.read_text()
+    # The "## 2014.5 was the line." substring inside the body must NOT have
+    # truncated the section. The lesson section must follow.
+    assert "## 2014.5 was the line." in text
+    assert "## One-line lesson" in text
+    assert "Watch the precise FVG midpoint" in text
+    # Section ordering preserved — "What actually happened" comes BEFORE "One-line lesson"
+    assert text.index("## What actually happened") < text.index("## One-line lesson")
+
+
+def test_enricher_double_pass_does_not_corrupt(memory):
+    """Two enrichment passes (e.g. retried after a crash) must converge."""
+    path = _write_templated_autopsy(memory)
+    enrichment = AutopsyEnrichment(
+        what_actually_happened="First-pass narrative.",
+        one_line_lesson="First-pass lesson.",
+    )
+    client = _FakeClient(enrichment)
+    enricher = AutopsyEnricher(client=client, config=EnricherConfig(enabled=True))
+
+    enricher.enrich(autopsy_path=path, trade_events=[], triggering_sr=None)
+    first_text = path.read_text()
+    # Second pass with new content
+    client.messages._enrichment = AutopsyEnrichment(
+        what_actually_happened="Second-pass narrative replacing the first.",
+        one_line_lesson="Second-pass lesson replacing the first.",
+    )
+    enricher.enrich(autopsy_path=path, trade_events=[], triggering_sr=None)
+    second_text = path.read_text()
+
+    # First-pass content gone, second-pass present, structure intact
+    assert "First-pass narrative" not in second_text
+    assert "Second-pass narrative" in second_text
+    assert second_text.count("## What actually happened") == 1
+    assert second_text.count("## One-line lesson") == 1

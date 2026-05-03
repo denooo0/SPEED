@@ -7,6 +7,7 @@ TradeSignal via the existing RiskCalculator.
 from __future__ import annotations
 
 import logging
+import re
 import time
 from typing import Any, Dict, List, Optional
 
@@ -21,6 +22,66 @@ from src.risk.risk_calculator import RiskCalculator
 from src.signals.signal_generator import TradeSignal
 
 logger = logging.getLogger(__name__)
+
+
+# Doctrine enforcement constants — see prompts/ATLAS_MANDATE.md §V (Laws).
+MIN_KILL_THESIS_LEN = 40         # Law 3: vague kill thesis → reject
+MIN_RR_MULTIPLE = 3.0            # Law 4
+MAX_CONFIDENCE = 0.9             # Law 6
+CONFIDENCE_RECONCILE_TOLERANCE = 0.05   # Law 5
+MIN_NONZERO_LENSES = 2           # Law 7
+
+# Vague-language blacklist for kill_thesis. Case-insensitive substring match.
+# Keep tight — false positives cost trades, false negatives cost discipline.
+VAGUE_KILL_PATTERNS = (
+    r"\bif\s+(it|the\s+trade|the\s+market)\s+goes?\s+against\s+me\b",
+    r"\bif\s+(i\s+am|i\'m|im)\s+wrong\b",
+    r"\bif\s+the\s+trend\s+reverses\b",
+    r"\bif\s+it\s+(doesn\'?t|does\s+not)\s+work\s+out\b",
+    r"\bgut\s+feel\b",
+    r"\bvibes?\b",
+)
+_VAGUE_KILL_RE = re.compile("|".join(VAGUE_KILL_PATTERNS), re.IGNORECASE)
+
+
+def validate_take(sr: SituationReport, has_open_position: bool = False) -> Optional[str]:
+    """Doctrine chokepoint. Returns None if SR can become a trade; else reason str.
+
+    Closes laws 2, 3, 4, 5, 6, 7, 8, and 11 in one place. Keep this in sync
+    with prompts/ATLAS_MANDATE.md §V — the mandate is the source of truth.
+    """
+    tp = sr.trade_proposal
+    if tp.decision != "TAKE":
+        return None  # caller handles SKIP / NO_TRADE upstream
+    if has_open_position:
+        return "Law 11: another position is already open on this instrument"
+    if sr.data_quality != "FRESH":
+        return f"Law 8: data_quality={sr.data_quality}"
+    if sr.trapped_party is None:
+        return "Law 2: no named trapped_party"
+    if not sr.kill_thesis or len(sr.kill_thesis.strip()) < MIN_KILL_THESIS_LEN:
+        return "Law 3: kill_thesis too short / vague"
+    if _VAGUE_KILL_RE.search(sr.kill_thesis):
+        return "Law 3: kill_thesis matches vague-language blacklist"
+    if tp.rr_minimum < MIN_RR_MULTIPLE:
+        return f"Law 4: rr_minimum={tp.rr_minimum} < {MIN_RR_MULTIPLE}"
+    if sr.confidence > MAX_CONFIDENCE:
+        return f"Law 6: confidence={sr.confidence} > {MAX_CONFIDENCE}"
+    cb = sr.confidence_breakdown
+    cb_sum = cb.flow + cb.structure + cb.context + cb.intent
+    if abs(cb_sum - sr.confidence) > CONFIDENCE_RECONCILE_TOLERANCE:
+        return (
+            f"Law 5: confidence ({sr.confidence}) and breakdown sum "
+            f"({cb_sum:.3f}) disagree by > {CONFIDENCE_RECONCILE_TOLERANCE}"
+        )
+    nonzero_lenses = sum(
+        1 for v in (cb.flow, cb.structure, cb.context, cb.intent) if v > 0
+    )
+    if nonzero_lenses < MIN_NONZERO_LENSES:
+        return f"Law 7: only {nonzero_lenses} non-zero lens(es)"
+    if tp.entry_zone is None or tp.first_target is None:
+        return "Schema: TAKE requires entry_zone and first_target"
+    return None
 
 
 class LLMSignalGenerator:
@@ -100,18 +161,24 @@ class LLMSignalGenerator:
         self,
         sr: SituationReport,
         account_balance: float,
+        has_open_position: bool = False,
     ) -> Optional[TradeSignal]:
         """Convert a TAKE SR into a deterministic TradeSignal.
 
-        The brain provides the strategist's view (entry zone, first target,
-        kill thesis). The risk calc enforces the discipline: SL distance,
-        position size, R:R-derived TP2/TP3.
+        Runs `validate_take` first — closes 8 doctrine laws at this single
+        chokepoint. The brain provides the strategist's view (entry zone,
+        first target, kill thesis). The risk calc enforces the discipline:
+        SL distance, position size, R:R-derived TP2/TP3.
         """
+        if sr.trade_proposal.decision != "TAKE":
+            return None
+        rejection = validate_take(sr, has_open_position=has_open_position)
+        if rejection is not None:
+            logger.info("TAKE rejected: %s", rejection)
+            return None
         tp = sr.trade_proposal
-        if tp.decision != "TAKE":
-            return None
-        if tp.entry_zone is None or tp.first_target is None:
-            return None
+        # validate_take guarantees these are non-None for TAKE
+        assert tp.entry_zone is not None and tp.first_target is not None
         entry = (tp.entry_zone.low + tp.entry_zone.high) / 2
         params = self.risk_calc.build(entry=entry, account_balance=account_balance)
         # Brain's first_target overrides the rules-based TP1; TP2/TP3 stay rule-derived
@@ -125,7 +192,8 @@ class LLMSignalGenerator:
             account_risk=params.risk_amount,
             reason=sr.thesis[:500],
             timestamp=int(time.time()),
-            confidence=min(sr.confidence, 0.9),
+            confidence=min(sr.confidence, MAX_CONFIDENCE),
+            direction=tp.direction if tp.direction in ("long", "short") else "long",
         )
 
     # -- helpers ---------------------------------------------------------

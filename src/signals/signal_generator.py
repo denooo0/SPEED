@@ -24,6 +24,7 @@ class TradeSignal:
     reason: str
     timestamp: int
     confidence: float
+    direction: str = "long"  # "long" or "short" — drives evaluate() comparisons
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

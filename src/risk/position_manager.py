@@ -44,6 +44,9 @@ class PositionManager:
         ad_at_entry: Optional[float] = None,
     ) -> Dict[str, Any]:
         position_id = uuid.uuid4().hex
+        direction = str(signal.get("direction", "long"))
+        if direction not in ("long", "short"):
+            raise ValueError(f"unsupported direction: {direction!r}")
         record = {
             "position_id": position_id,
             "entry_price": signal["entry_price"],
@@ -59,6 +62,7 @@ class PositionManager:
             "tp_targets_remaining": ["TP1", "TP2", "TP3"],
             "status": "OPEN",
             "notes": signal.get("reason"),
+            "direction": direction,
         }
         self.db.save_position(record)
         self.db.log_trade_event(
@@ -78,15 +82,29 @@ class PositionManager:
         return self.db.load_open_positions()
 
     # -- monitoring -------------------------------------------------------
+    @staticmethod
+    def _direction_signs(direction: str) -> tuple[int, int]:
+        """Return (sl_cmp, tp_cmp) where cmp == +1 means current >= level fires.
+
+        For a long: SL fires when current <= sl; TP fires when current >= tp.
+        For a short: mirrored.
+        """
+        return (-1, +1) if direction == "long" else (+1, -1)
+
     def evaluate(self, position: Dict[str, Any], current_price: float) -> List[ExitAction]:
         actions: List[ExitAction] = []
         remaining = list(position.get("tp_targets_remaining") or [])
         size_remaining = float(position.get("entry_size", 0))
         entry = float(position["entry_price"])
+        direction = str(position.get("direction", "long"))
+        sl_sign, tp_sign = self._direction_signs(direction)
+        # PnL sign: longs profit when price rises, shorts profit when price falls
+        side = +1 if direction == "long" else -1
 
-        # Stop loss first
-        if current_price <= float(position["sl"]):
-            pnl = (current_price - entry) * size_remaining
+        sl_price = float(position["sl"])
+        sl_hit = (current_price - sl_price) * sl_sign >= 0
+        if sl_hit:
+            pnl = (current_price - entry) * size_remaining * side
             actions.append(
                 ExitAction(
                     position_id=position["position_id"],
@@ -113,13 +131,14 @@ class PositionManager:
         ):
             if tp_label not in remaining:
                 continue
-            if current_price < tp_price:
+            tp_hit = (current_price - tp_price) * tp_sign >= 0
+            if not tp_hit:
                 continue
             close_size = starting_size * (tp_pct / 100.0)
             close_size = min(close_size, size_remaining)
             if close_size <= 0:
                 continue
-            pnl = (tp_price - entry) * close_size
+            pnl = (tp_price - entry) * close_size * side
             actions.append(
                 ExitAction(
                     position_id=position["position_id"],
@@ -193,8 +212,7 @@ class PositionManager:
         # Refresh from DB so we hand the hook the final persisted state, plus events
         try:
             refreshed = self.db.get_position(position["position_id"]) or position
-            events = self.db.get_trades_since(0)
-            events = [e for e in events if e.get("position_id") == position["position_id"]]
+            events = self.db.get_trades_for_position(position["position_id"])
             self.on_close(refreshed, events)
         except Exception as e:  # noqa: BLE001 — close hook must never crash the loop
             logger.exception("close hook failed for %s: %s", position.get("position_id"), e)

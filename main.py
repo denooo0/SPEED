@@ -191,7 +191,11 @@ class TradingBot:
 
         if sr.trade_proposal.decision == "TAKE":
             balance = self._account_balance()
-            signal = self.signal_gen.situation_report_to_trade_signal(sr, balance)
+            signal = self.signal_gen.situation_report_to_trade_signal(
+                sr,
+                balance,
+                has_open_position=self.position_mgr.has_open_position(),
+            )
             if signal is not None:
                 position = self.executor.execute_entry(signal)
                 if position is not None:

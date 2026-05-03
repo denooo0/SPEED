@@ -116,6 +116,18 @@ def test_generate_returns_situation_report(gen, fake_brain):
 
 def test_take_sr_converts_to_trade_signal(gen, fake_brain):
     sr = _example_take_sr(price=2042.0)
+    # Strengthen the SR enough to clear validate_take()
+    sr.trapped_party = type(sr.trapped_party).__class__ if sr.trapped_party else None
+    from src.llm.schema import ConfidenceBreakdown, TrappedParty
+    sr.trapped_party = TrappedParty(who="late longs", level=2055.0, pain_bp=38.0)
+    sr.kill_thesis = (
+        "If M5 closes back above 2055 with CVD positive, the thesis is dead "
+        "and we exit at market."
+    )
+    sr.confidence = 0.72
+    sr.confidence_breakdown = ConfidenceBreakdown(
+        flow=0.20, structure=0.18, context=0.18, intent=0.16
+    )
     signal = gen.situation_report_to_trade_signal(sr, account_balance=10_000)
     assert signal is not None
     assert 2041.0 <= signal.entry_price <= 2043.0
@@ -124,11 +136,28 @@ def test_take_sr_converts_to_trade_signal(gen, fake_brain):
     # Brain's first_target should override the rules-based TP1
     assert abs(signal.tp1 - sr.trade_proposal.first_target) < 1e-6
     assert signal.confidence <= 0.9
+    assert signal.direction == "long"
 
 
 def test_no_trade_sr_does_not_convert(gen, fake_brain):
     sr = _no_trade_sr()
     signal = gen.situation_report_to_trade_signal(sr, account_balance=10_000)
+    assert signal is None
+
+
+def test_converter_rejects_when_position_already_open(gen, fake_brain):
+    """Law 11 — one bullet, one chamber."""
+    from src.llm.schema import ConfidenceBreakdown, TrappedParty
+    sr = _example_take_sr(price=2042.0)
+    sr.trapped_party = TrappedParty(who="late longs", level=2055.0, pain_bp=38.0)
+    sr.kill_thesis = (
+        "If M5 closes back above 2055 with CVD positive, the thesis is dead and we exit."
+    )
+    sr.confidence = 0.72
+    sr.confidence_breakdown = ConfidenceBreakdown(flow=0.2, structure=0.18, context=0.18, intent=0.16)
+    signal = gen.situation_report_to_trade_signal(
+        sr, account_balance=10_000, has_open_position=True
+    )
     assert signal is None
 
 

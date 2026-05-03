@@ -32,8 +32,8 @@ class DatabaseManager:
             (position_id, entry_price, entry_time, entry_size,
              current_price, ma_at_entry, ad_at_entry,
              sl, tp1, tp2, tp3, tp_targets_remaining,
-             status, notes, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             status, notes, updated_at, direction)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 pos["position_id"],
@@ -51,9 +51,19 @@ class DatabaseManager:
                 pos.get("status", "OPEN"),
                 pos.get("notes"),
                 int(time.time() * 1000),
+                pos.get("direction", "long"),
             ),
         )
         self.conn.commit()
+
+    def get_trades_for_position(self, position_id: str) -> List[Dict[str, Any]]:
+        """Fetch all trade events for a single position. O(events_for_pos), not O(total)."""
+        cur = self.conn.cursor()
+        cur.execute(
+            "SELECT * FROM trades WHERE position_id = ? ORDER BY timestamp",
+            (position_id,),
+        )
+        return [dict(r) for r in cur.fetchall()]
 
     def update_position(self, position_id: str, **fields: Any) -> None:
         if not fields:

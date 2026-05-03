@@ -20,9 +20,16 @@ CREATE TABLE IF NOT EXISTS positions (
     tp_targets_remaining TEXT NOT NULL,
     status        TEXT NOT NULL,
     notes         TEXT,
-    updated_at    INTEGER NOT NULL
+    updated_at    INTEGER NOT NULL,
+    direction     TEXT NOT NULL DEFAULT 'long'
 );
 """
+
+# Idempotent migrations applied after CREATE TABLE IF NOT EXISTS, so existing
+# dev DBs from before the column was added pick it up cleanly.
+MIGRATIONS = (
+    "ALTER TABLE positions ADD COLUMN direction TEXT NOT NULL DEFAULT 'long'",
+)
 
 SIGNALS_SCHEMA = """
 CREATE TABLE IF NOT EXISTS signals (
@@ -63,7 +70,7 @@ INDEX_STMTS = (
 
 
 def init_database(db_path: str | Path) -> None:
-    """Create all tables / indexes if absent. Idempotent."""
+    """Create all tables / indexes if absent. Apply migrations. Idempotent."""
     p = Path(db_path)
     p.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(p))
@@ -74,6 +81,12 @@ def init_database(db_path: str | Path) -> None:
         cur.execute(TRADES_SCHEMA)
         for stmt in INDEX_STMTS:
             cur.execute(stmt)
+        for stmt in MIGRATIONS:
+            try:
+                cur.execute(stmt)
+            except sqlite3.OperationalError:
+                # Column already exists / migration already applied.
+                pass
         conn.commit()
     finally:
         conn.close()

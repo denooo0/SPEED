@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 DataQuality = Literal["FRESH", "DEGRADED", "STALE"]
@@ -38,6 +38,16 @@ class DominantParty(BaseModel):
 class EntryZone(BaseModel):
     low: float
     high: float
+
+    @model_validator(mode="after")
+    def _validate_range(self) -> "EntryZone":
+        if self.low <= 0 or self.high <= 0:
+            raise ValueError("entry_zone prices must be positive")
+        if self.low > self.high:
+            raise ValueError(
+                f"entry_zone.low ({self.low}) must be <= high ({self.high})"
+            )
+        return self
 
 
 class TradeProposal(BaseModel):

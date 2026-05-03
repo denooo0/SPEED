@@ -43,7 +43,7 @@ BYBIT:
 
 ANTHROPIC:
   api_key: ""              # leave empty to read ANTHROPIC_API_KEY from env
-  model: "claude-opus-4-7"
+  model: "claude-opus-4-7"  # NOTE: changing the model invalidates the prompt cache (model-scoped)
   effort: "high"           # low | medium | high | xhigh | max
   max_tokens: 16000
   mandate_path: "prompts/ATLAS_MANDATE.md"

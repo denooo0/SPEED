@@ -81,3 +81,88 @@ def test_resume_open_positions_after_restart(db_manager):
     # Simulate restart with a fresh manager but same db file
     pm2 = PositionManager(db_manager)
     assert len(pm2.get_open_positions()) == 2
+
+
+# -- short-side semantics -------------------------------------------------
+def _short_signal():
+    """Short setup: entry 2000, SL 2005 (above), TPs below entry."""
+    return {
+        "entry_price": 2000.0,
+        "stop_loss": 2005.0,
+        "tp1": 1997.0,
+        "tp2": 1994.0,
+        "tp3": 1988.0,
+        "position_size": 1.0,
+        "reason": "short test",
+        "direction": "short",
+    }
+
+
+def test_short_position_persists_direction(db_manager):
+    pm = PositionManager(db_manager)
+    record = pm.open_from_signal(_short_signal())
+    fetched = db_manager.get_position(record["position_id"])
+    assert fetched["direction"] == "short"
+
+
+def test_short_sl_fires_on_price_above(db_manager):
+    pm = PositionManager(db_manager)
+    record = pm.open_from_signal(_short_signal())
+    # Price moves up to SL — short loses
+    actions = pm.evaluate(record, current_price=2005.5)
+    assert len(actions) == 1
+    assert actions[0].kind == "SL"
+    # Short loses when price rises above entry
+    assert actions[0].pnl < 0
+
+
+def test_short_does_not_fake_hit_tp_on_open(db_manager):
+    """Pre-fix bug: shorts triggered TP1 instantly because comparison was long-only."""
+    pm = PositionManager(db_manager)
+    record = pm.open_from_signal(_short_signal())
+    # Price unchanged from entry — no TPs should fire
+    actions = pm.evaluate(record, current_price=2000.0)
+    assert actions == []
+
+
+def test_short_tps_fire_on_price_below(db_manager):
+    pm = PositionManager(db_manager)
+    record = pm.open_from_signal(_short_signal())
+    # Price drops past all three TPs in one shot
+    actions = pm.evaluate(record, current_price=1985.0)
+    kinds = [a.kind for a in actions]
+    assert kinds == ["TP1", "TP2", "TP3"]
+    # Short profits as price falls
+    for a in actions:
+        assert a.pnl > 0
+
+
+def test_long_still_works_after_direction_refactor(db_manager):
+    pm = PositionManager(db_manager)
+    record = pm.open_from_signal(_make_signal())  # long
+    # Price drops to SL
+    actions = pm.evaluate(record, current_price=1990.0)
+    assert actions[0].kind == "SL"
+    assert actions[0].pnl < 0
+
+
+def test_get_trades_for_position_filters_correctly(db_manager):
+    pm = PositionManager(db_manager)
+    rec_a = pm.open_from_signal(_make_signal())
+    rec_b = pm.open_from_signal(_make_signal())
+    pm.evaluate(rec_a, current_price=1990.0)  # close A on SL
+    a_events = db_manager.get_trades_for_position(rec_a["position_id"])
+    b_events = db_manager.get_trades_for_position(rec_b["position_id"])
+    assert all(e["position_id"] == rec_a["position_id"] for e in a_events)
+    assert all(e["position_id"] == rec_b["position_id"] for e in b_events)
+    # B is still open with only the ENTRY event
+    assert len(b_events) == 1
+
+
+def test_open_from_signal_rejects_unsupported_direction(db_manager):
+    import pytest as _pt
+    pm = PositionManager(db_manager)
+    bad = _make_signal()
+    bad["direction"] = "sideways"
+    with _pt.raises(ValueError):
+        pm.open_from_signal(bad)

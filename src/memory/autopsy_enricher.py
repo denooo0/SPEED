@@ -39,6 +39,17 @@ SECTION_HEADERS = {
     "one_line_lesson": "## One-line lesson",
 }
 
+# All headers the autopsy_writer emits, in document order. Used as terminators
+# when replacing a section so we never truncate at a `## ` that legitimately
+# appears inside body prose (e.g. quoting a price level "## 2014.5 reaction").
+KNOWN_AUTOPSY_HEADERS = (
+    "## Outcome",
+    "## Trade events",
+    "## What the SITUATION REPORT predicted",
+    "## What actually happened",
+    "## One-line lesson",
+)
+
 SYSTEM_PROMPT = """\
 You are the post-mortem analyst for ATLAS, a precision-trading system. Your
 sole job is to read what was predicted, what actually happened, and write
@@ -146,15 +157,34 @@ class AutopsyEnricher:
 
     @staticmethod
     def _replace_section(text: str, header: str, body: str) -> str:
-        """Replace everything from `header` until the next `## ` header (or EOF)."""
-        # Match the header line, then capture until the next H2 (## space)
+        """Replace everything from `header` until the next *known* header.
+
+        Bounded to the KNOWN_AUTOPSY_HEADERS allow-list so a stray `## ` in
+        the body prose (e.g. quoting a price level) cannot truncate.
+        """
+        # Find the header line. Anchor to start-of-line.
         pattern = re.compile(
-            r"(^" + re.escape(header) + r"[^\n]*\n)(.*?)(?=^## |\Z)",
-            flags=re.MULTILINE | re.DOTALL,
+            r"^" + re.escape(header) + r"[^\n]*\n",
+            flags=re.MULTILINE,
         )
-        replacement = r"\1" + body + "\n\n"
-        new_text, n = pattern.subn(replacement, text, count=1)
-        if n == 0:
-            # Header not found — append the section
-            new_text = text.rstrip() + f"\n\n{header}\n\n{body}\n"
-        return new_text
+        match = pattern.search(text)
+        if match is None:
+            # Header missing — append the section
+            return text.rstrip() + f"\n\n{header}\n\n{body}\n"
+
+        body_start = match.end()
+        # Search forward for the next known header (other than this one)
+        end_idx = len(text)
+        for next_header in KNOWN_AUTOPSY_HEADERS:
+            if next_header == header:
+                continue
+            nh_match = re.search(
+                r"^" + re.escape(next_header) + r"[^\n]*\n",
+                text[body_start:],
+                flags=re.MULTILINE,
+            )
+            if nh_match is not None:
+                candidate = body_start + nh_match.start()
+                if candidate < end_idx:
+                    end_idx = candidate
+        return text[:body_start] + body + "\n\n" + text[end_idx:]

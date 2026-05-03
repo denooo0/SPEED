@@ -117,6 +117,73 @@ def test_digest_empty_when_no_autopsies(memory):
     assert "Memory empty" in digest
 
 
+def test_short_trade_classified_correctly(memory):
+    """Regression: pre-fix, all shorts were classified breakeven because
+    `risk_per_unit = entry - sl` is negative for shorts."""
+    writer = AutopsyWriter(memory)
+    short_position = {
+        "position_id": "shortabc",
+        "entry_price": 2000.0,
+        "entry_time": 1714670000000,
+        "entry_size": 1.0,
+        "sl": 2005.0,           # SL above entry (short)
+        "tp1": 1997.0,
+        "tp2": 1994.0,
+        "tp3": 1988.0,
+        "status": "CLOSED",
+        "direction": "short",
+    }
+    # Won short trade — price fell, pnl positive
+    win_events = [
+        {"event": "EXIT", "price": 1990.0, "size": 1.0, "pnl": 10.0, "rule_matched": "TP3", "position_id": "shortabc"},
+    ]
+    path = writer.from_closed_position(short_position, win_events, instrument="XAUUSD")
+    fm, _ = memory.load_autopsy(path)
+    assert fm["result"] == "won"
+    assert fm["r_multiple"] > 0
+
+
+def test_short_loss_classified_correctly(memory):
+    writer = AutopsyWriter(memory)
+    short_position = {
+        "position_id": "shortdef",
+        "entry_price": 2000.0,
+        "entry_time": 1714670600000,
+        "entry_size": 1.0,
+        "sl": 2005.0,
+        "tp1": 1997.0,
+        "tp2": 1994.0,
+        "tp3": 1988.0,
+        "status": "CLOSED",
+        "direction": "short",
+    }
+    loss_events = [
+        {"event": "EXIT", "price": 2005.0, "size": 1.0, "pnl": -5.0, "rule_matched": "SL", "position_id": "shortdef"},
+    ]
+    path = writer.from_closed_position(short_position, loss_events, instrument="XAUUSD")
+    fm, _ = memory.load_autopsy(path)
+    assert fm["result"] == "lost"
+    assert fm["r_multiple"] < 0
+    assert "direction:short" in fm["tags"]
+
+
+def test_autopsy_refuses_empty_position_id(memory):
+    writer = AutopsyWriter(memory)
+    bad_position = {
+        "position_id": "",
+        "entry_price": 2000.0,
+        "entry_time": 1714670000000,
+        "entry_size": 1.0,
+        "sl": 1995.0,
+        "tp1": 2003.0,
+        "tp2": 2006.0,
+        "tp3": 2012.0,
+        "status": "CLOSED",
+    }
+    with pytest.raises(ValueError):
+        writer.from_closed_position(bad_position, [], instrument="XAUUSD")
+
+
 def test_digest_aggregates_wins_and_losses(memory):
     writer = AutopsyWriter(memory)
     # 2 wins (distinct ids and entry_times so files don't collide)

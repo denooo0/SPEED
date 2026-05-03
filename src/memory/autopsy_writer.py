@@ -33,7 +33,12 @@ class AutopsyWriter:
         autopsy_id = self._build_id(position, instrument)
         result, r_multiple = self._classify_outcome(position, trade_events)
         kill_triggered = self._kill_thesis_triggered(trade_events)
-        tags = self._tags(result, triggering_sr, kill_triggered)
+        tags = self._tags(
+            result,
+            triggering_sr,
+            kill_triggered,
+            direction=position.get("direction"),
+        )
 
         body = self._render_body(
             position=position,
@@ -60,26 +65,37 @@ class AutopsyWriter:
     # -- helpers ---------------------------------------------------------
     @staticmethod
     def _build_id(position: Dict[str, Any], instrument: str) -> str:
+        position_id = position.get("position_id") or ""
+        if not position_id:
+            raise ValueError("autopsy requires a non-empty position_id")
         ts_ms = int(position.get("entry_time", 0))
-        dt = datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc) if ts_ms else datetime.now(tz=timezone.utc)
-        short = (position.get("position_id") or "")[:8]
-        return f"{dt.strftime('%Y-%m-%d-%H%M')}-{instrument.lower()}-{short}"
+        dt = (
+            datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc)
+            if ts_ms
+            else datetime.now(tz=timezone.utc)
+        )
+        # Seconds resolution + 12 chars of UUID hex makes intra-second collisions
+        # statistically unreachable.
+        return (
+            f"{dt.strftime('%Y-%m-%d-%H%M%S')}-{instrument.lower()}-{position_id[:12]}"
+        )
 
     @staticmethod
     def _classify_outcome(
         position: Dict[str, Any],
         trade_events: List[Dict[str, Any]],
     ) -> tuple[str, float]:
-        """Return (result_label, r_multiple)."""
+        """Return (result_label, r_multiple). Direction-agnostic."""
         entry = float(position.get("entry_price") or 0)
         sl = float(position.get("sl") or 0)
-        risk_per_unit = entry - sl
-        if risk_per_unit <= 0:
+        # Risk per unit is always |entry - sl|; longs and shorts both have positive risk.
+        risk_per_unit = abs(entry - sl)
+        if risk_per_unit == 0:
             return ("breakeven", 0.0)
         pnl_total = sum(float(e.get("pnl") or 0) for e in trade_events if e.get("pnl") is not None)
         size = float(position.get("entry_size") or 1)
         avg_pnl_per_unit = pnl_total / size if size else 0.0
-        r = avg_pnl_per_unit / risk_per_unit if risk_per_unit else 0.0
+        r = avg_pnl_per_unit / risk_per_unit
 
         if pnl_total > 0:
             return ("won", r)
@@ -96,6 +112,7 @@ class AutopsyWriter:
         result: str,
         sr: Optional[SituationReport],
         kill_triggered: bool,
+        direction: Optional[str] = None,
     ) -> List[str]:
         tags = [result]
         if kill_triggered:
@@ -103,6 +120,8 @@ class AutopsyWriter:
         if sr is not None:
             tags.append(f"regime:{sr.regime}")
             tags.append(f"direction:{sr.trade_proposal.direction}")
+        elif direction:
+            tags.append(f"direction:{direction}")
         return tags
 
     @staticmethod
