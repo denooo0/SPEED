@@ -121,3 +121,46 @@ def test_brain_returns_validated_pydantic_object():
     out = brain.analyze({}, "(empty)")
     assert isinstance(out, SituationReport)
     assert out.confidence == 0.72
+
+
+def test_brain_concatenates_mandate_and_addendum():
+    sr = _example_sr()
+    client = _FakeClient(sr)
+    repo = Path(__file__).resolve().parent.parent
+    mandate_path = repo / "prompts" / "ATLAS_MANDATE.md"
+    addendum_path = repo / "prompts" / "ATLAS_ADDENDUM.md"
+    brain = AtlasBrain(
+        client=client,
+        config=BrainConfig(
+            mandate_path=str(mandate_path),
+            addendum_path=str(addendum_path),
+        ),
+    )
+    # Cached prefix must be at least 4096 tokens (~14336 chars at 3.5 chars/tok)
+    # to cache on Opus 4.7. Verify both files contributed.
+    assert "ATLAS — THE MANDATE" in brain.cached_system
+    assert "ATLAS — ADDENDUM" in brain.cached_system
+    assert len(brain.cached_system) >= 14_500
+
+    brain.analyze({}, "(empty)")
+    system = client.messages.last_kwargs["system"]
+    assert system[0]["text"] == brain.cached_system
+    assert system[0]["cache_control"] == {"type": "ephemeral"}
+
+
+def test_brain_warns_when_prefix_below_threshold(tmp_path, caplog):
+    sr = _example_sr()
+    client = _FakeClient(sr)
+    short_mandate = tmp_path / "tiny.md"
+    short_mandate.write_text("# Tiny mandate\nThis will not cache.\n")
+    with caplog.at_level("WARNING"):
+        brain = AtlasBrain(
+            client=client,
+            config=BrainConfig(
+                mandate_path=str(short_mandate),
+                addendum_path=None,
+            ),
+        )
+    assert any("cache will likely not engage" in r.message.lower() for r in caplog.records)
+    # The brain still works; the warning is the deliverable.
+    assert isinstance(brain.cached_system, str)

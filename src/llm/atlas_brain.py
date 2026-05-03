@@ -23,10 +23,15 @@ class BrainConfig:
     effort: str = "high"
     max_tokens: int = 16_000
     mandate_path: str = "prompts/ATLAS_MANDATE.md"
+    addendum_path: Optional[str] = "prompts/ATLAS_ADDENDUM.md"
+    # Opus 4.7 caches prefixes >= 4096 tokens. We approximate via char count
+    # (~3.5 chars/token) and refuse to start if the cached block is too small,
+    # since silent cache-misses are a real economic risk.
+    min_cached_chars: int = 14_500   # ~4143 tokens at 3.5 chars/tok
 
 
 class AtlasBrain:
-    """Single LLM call. The mandate is the cached system prompt."""
+    """Single LLM call. The mandate (+ addendum) is the cached system prompt."""
 
     def __init__(
         self,
@@ -38,7 +43,35 @@ class AtlasBrain:
             import anthropic  # local import keeps tests light
             client = anthropic.Anthropic()
         self.client = client
-        self.mandate = Path(self.config.mandate_path).read_text()
+        self.cached_system = self._load_cached_system()
+
+    def _load_cached_system(self) -> str:
+        mandate = Path(self.config.mandate_path).read_text()
+        addendum = ""
+        if self.config.addendum_path:
+            addendum_path = Path(self.config.addendum_path)
+            if addendum_path.exists():
+                addendum = addendum_path.read_text()
+            else:
+                logger.warning(
+                    "addendum_path %s not found — cache may not engage on Opus 4.7",
+                    addendum_path,
+                )
+        combined = mandate + ("\n\n---\n\n" + addendum if addendum else "")
+        if len(combined) < self.config.min_cached_chars:
+            logger.warning(
+                "cached prefix is %d chars (~%d tokens); below the configured "
+                "min_cached_chars=%d. Cache will likely not engage on Opus 4.7.",
+                len(combined),
+                int(len(combined) / 3.5),
+                self.config.min_cached_chars,
+            )
+        return combined
+
+    # Backward-compat for tests / external callers that read .mandate
+    @property
+    def mandate(self) -> str:
+        return self.cached_system
 
     def analyze(
         self,
@@ -56,7 +89,7 @@ class AtlasBrain:
             system=[
                 {
                     "type": "text",
-                    "text": self.mandate,
+                    "text": self.cached_system,
                     "cache_control": {"type": "ephemeral"},
                 }
             ],

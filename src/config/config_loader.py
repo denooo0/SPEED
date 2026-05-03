@@ -28,7 +28,10 @@ OPTIONAL_SECTIONS_WITH_DEFAULTS = {
         "effort": "high",
         "max_tokens": 16000,
         "mandate_path": "prompts/ATLAS_MANDATE.md",
+        "addendum_path": "prompts/ATLAS_ADDENDUM.md",
         "enabled": False,
+        "autopsy_model": "claude-sonnet-4-6",
+        "autopsy_enabled": False,
     },
     "MEMORY": {
         "root": "memory/",

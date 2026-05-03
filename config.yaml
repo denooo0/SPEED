@@ -47,7 +47,10 @@ ANTHROPIC:
   effort: "high"           # low | medium | high | xhigh | max
   max_tokens: 16000
   mandate_path: "prompts/ATLAS_MANDATE.md"
+  addendum_path: "prompts/ATLAS_ADDENDUM.md"   # padding to clear 4096-tok cache min
   enabled: false           # flip to true once api_key is set
+  autopsy_model: "claude-sonnet-4-6"           # cheaper model for autopsy enrichment
+  autopsy_enabled: false   # set true to LLM-rewrite autopsy TODO sections
 
 MEMORY:
   root: "memory/"

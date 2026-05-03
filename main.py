@@ -23,6 +23,7 @@ from src.llm.atlas_brain import AtlasBrain, BrainConfig
 from src.llm.schema import SituationReport
 from src.logging_mon.logger import setup_logging
 from src.logging_mon.system_monitor import SystemMonitor
+from src.memory.autopsy_enricher import AutopsyEnricher, EnricherConfig
 from src.memory.autopsy_writer import AutopsyWriter
 from src.memory.digest_builder import DigestBuilder
 from src.memory.markdown_store import MarkdownMemory
@@ -77,12 +78,14 @@ class TradingBot:
         # The brain is optional — when disabled, the bot acts as a screener only.
         self.brain: Optional[AtlasBrain] = None
         self.signal_gen: Optional[LLMSignalGenerator] = None
+        self.autopsy_enricher: Optional[AutopsyEnricher] = None
         if config["ANTHROPIC"].get("enabled"):
             brain_cfg = BrainConfig(
                 model=config["ANTHROPIC"]["model"],
                 effort=config["ANTHROPIC"]["effort"],
                 max_tokens=int(config["ANTHROPIC"]["max_tokens"]),
                 mandate_path=config["ANTHROPIC"]["mandate_path"],
+                addendum_path=config["ANTHROPIC"].get("addendum_path"),
             )
             import anthropic
             anthropic_client = anthropic.Anthropic(api_key=config["ANTHROPIC"]["api_key"])
@@ -96,6 +99,14 @@ class TradingBot:
                     config["SIGNAL"].get("min_signal_interval_seconds", 1800)
                 ),
             )
+            if config["ANTHROPIC"].get("autopsy_enabled"):
+                self.autopsy_enricher = AutopsyEnricher(
+                    client=anthropic_client,
+                    config=EnricherConfig(
+                        model=config["ANTHROPIC"]["autopsy_model"],
+                        enabled=True,
+                    ),
+                )
 
         self.gate = CycleGate(GateConfig(
             invoke_on_volume_spike=config["GATE"]["invoke_on_volume_spike"],
@@ -197,12 +208,18 @@ class TradingBot:
     ) -> None:
         sr = self._sr_by_position.pop(position["position_id"], None)
         try:
-            self.autopsy_writer.from_closed_position(
+            path = self.autopsy_writer.from_closed_position(
                 position=position,
                 trade_events=trade_events,
                 triggering_sr=sr,
                 instrument=self.symbol,
             )
+            if self.autopsy_enricher is not None:
+                self.autopsy_enricher.enrich(
+                    autopsy_path=path,
+                    trade_events=trade_events,
+                    triggering_sr=sr,
+                )
             self.digest_builder.rebuild(last_n=int(self.config["MEMORY"]["digest_window"]))
         except Exception as e:  # noqa: BLE001 — don't crash the loop on memory errors
             logger.exception("autopsy/digest update failed: %s", e)
