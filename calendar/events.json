@@ -1,9 +1,50 @@
 [
   {
-    "name": "EXAMPLE — replace with real events",
-    "timestamp": 1735689600000,
+    "name": "NFP May 2026",
+    "timestamp": 1777638600000,
     "impact": "high",
-    "source": "manual",
-    "_comment": "Timestamps are UTC milliseconds. Tier-1 = NFP, FOMC, CPI, ECB rate decision, Powell speeches. Update weekly from forexfactory.com or equivalent."
+    "source": "computed"
+  },
+  {
+    "name": "US CPI May 2026",
+    "timestamp": 1778675400000,
+    "impact": "high",
+    "source": "computed"
+  },
+  {
+    "name": "NFP Jun 2026",
+    "timestamp": 1780662600000,
+    "impact": "high",
+    "source": "computed"
+  },
+  {
+    "name": "US CPI Jun 2026",
+    "timestamp": 1781094600000,
+    "impact": "high",
+    "source": "computed"
+  },
+  {
+    "name": "NFP Jul 2026",
+    "timestamp": 1783081800000,
+    "impact": "high",
+    "source": "computed"
+  },
+  {
+    "name": "US CPI Jul 2026",
+    "timestamp": 1783513800000,
+    "impact": "high",
+    "source": "computed"
+  },
+  {
+    "name": "NFP Aug 2026",
+    "timestamp": 1786105800000,
+    "impact": "high",
+    "source": "computed"
+  },
+  {
+    "name": "US CPI Aug 2026",
+    "timestamp": 1786537800000,
+    "impact": "high",
+    "source": "computed"
   }
 ]

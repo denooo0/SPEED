@@ -74,3 +74,19 @@ DATABASE:
 MONITOR:
   cycle_interval_seconds: 60
   data_stale_threshold_seconds: 300
+
+WEBSOCKET:
+  enabled: false
+  url: "wss://stream.bybit.com/v5/public/linear"
+  reconnect_seconds: 5
+  ping_interval_seconds: 20
+
+COT:
+  enabled: false
+  cache_dir: "cot_cache/"
+
+CALENDAR:
+  enabled: true
+  events_path: "calendar/events.json"
+  lead_minutes: 15
+  lag_minutes: 15

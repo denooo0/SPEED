@@ -16,6 +16,9 @@ from typing import Any, Dict, Optional
 
 from src.config.config_loader import load_config
 from src.data_layer.bybit_connector import BybitConnector
+from src.data_layer.bybit_ws import BybitWSConnector, WSBuffer
+from src.data_layer.calendar_feed import CalendarConfig, CalendarFeed
+from src.data_layer.cot_feed import COTConfig, COTFeed
 from src.database.db_manager import DatabaseManager
 from src.errors.error_handler import ErrorHandler
 from src.execution.executor import Executor
@@ -108,11 +111,39 @@ class TradingBot:
                     ),
                 )
 
-        self.gate = CycleGate(GateConfig(
-            invoke_on_volume_spike=config["GATE"]["invoke_on_volume_spike"],
-            invoke_on_bos=config["GATE"]["invoke_on_bos"],
-            invoke_on_session_open=config["GATE"]["invoke_on_session_open"],
-        ))
+        # Optional auxiliary feeds (calendar, COT, WebSocket)
+        self.calendar: Optional[CalendarFeed] = None
+        if config["CALENDAR"].get("enabled"):
+            self.calendar = CalendarFeed(CalendarConfig(
+                events_path=config["CALENDAR"]["events_path"],
+                lead_minutes=int(config["CALENDAR"]["lead_minutes"]),
+                lag_minutes=int(config["CALENDAR"]["lag_minutes"]),
+            ))
+
+        self.cot: Optional[COTFeed] = None
+        if config["COT"].get("enabled"):
+            self.cot = COTFeed(COTConfig(cache_dir=config["COT"]["cache_dir"]))
+
+        self.ws_buffer: Optional[WSBuffer] = None
+        self.ws_connector: Optional[BybitWSConnector] = None
+        if config["WEBSOCKET"].get("enabled"):
+            self.ws_buffer = WSBuffer()
+            self.ws_connector = BybitWSConnector(
+                buffer=self.ws_buffer,
+                symbol=self.symbol,
+                url=config["WEBSOCKET"]["url"],
+                reconnect_seconds=int(config["WEBSOCKET"]["reconnect_seconds"]),
+                ping_interval_seconds=int(config["WEBSOCKET"]["ping_interval_seconds"]),
+            )
+
+        self.gate = CycleGate(
+            GateConfig(
+                invoke_on_volume_spike=config["GATE"]["invoke_on_volume_spike"],
+                invoke_on_bos=config["GATE"]["invoke_on_bos"],
+                invoke_on_session_open=config["GATE"]["invoke_on_session_open"],
+            ),
+            calendar=self.calendar,
+        )
 
         # Last triggering SITUATION REPORT (for autopsy linkage). Keyed by position_id.
         self._sr_by_position: Dict[str, SituationReport] = {}
@@ -120,11 +151,16 @@ class TradingBot:
     # -- main loop --------------------------------------------------------
     def run(self) -> None:
         logger.info(
-            "ATLAS starting on %s (testnet=%s, brain_enabled=%s)",
+            "ATLAS starting on %s (testnet=%s, brain=%s, ws=%s, calendar=%s, cot=%s)",
             self.symbol,
             self.config["BYBIT"].get("testnet"),
             self.brain is not None,
+            self.ws_connector is not None,
+            self.calendar is not None,
+            self.cot is not None,
         )
+        if self.ws_connector is not None:
+            self.ws_connector.start()
         self.telegram.send_message("🚀 ATLAS bot started")
         try:
             while True:
@@ -142,6 +178,8 @@ class TradingBot:
             logger.info("Shutting down…")
             self.telegram.send_message("🛑 ATLAS bot stopped")
         finally:
+            if self.ws_connector is not None:
+                self.ws_connector.stop()
             self.db.close()
 
     # -- cycle ------------------------------------------------------------
@@ -160,6 +198,8 @@ class TradingBot:
 
         funding = self.connector.fetch_funding_rate(self.symbol)
         oi = self.connector.fetch_open_interest(self.symbol)
+        ws_snapshot = self.ws_buffer.snapshot() if self.ws_buffer is not None else None
+        cot_snapshot = self.cot.latest() if self.cot is not None else None
         feature_pack = self.signal_gen.build_feature_pack(
             candles_m5=candles["5m"],
             candles_m15=candles["15m"],
@@ -167,6 +207,8 @@ class TradingBot:
             candles_h1=candles["1h"],
             funding_rate=funding,
             open_interest=oi,
+            ws_snapshot=ws_snapshot,
+            cot_snapshot=cot_snapshot,
         )
 
         invoke, reason = self.gate.should_invoke(feature_pack)

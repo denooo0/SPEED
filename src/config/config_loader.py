@@ -42,6 +42,22 @@ OPTIONAL_SECTIONS_WITH_DEFAULTS = {
         "invoke_on_bos": True,
         "invoke_on_session_open": True,
     },
+    "WEBSOCKET": {
+        "enabled": False,
+        "url": "wss://stream.bybit.com/v5/public/linear",
+        "reconnect_seconds": 5,
+        "ping_interval_seconds": 20,
+    },
+    "COT": {
+        "enabled": False,
+        "cache_dir": "cot_cache/",
+    },
+    "CALENDAR": {
+        "enabled": True,
+        "events_path": "calendar/events.json",
+        "lead_minutes": 15,
+        "lag_minutes": 15,
+    },
 }
 
 

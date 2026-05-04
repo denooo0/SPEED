@@ -3,7 +3,10 @@ from __future__ import annotations
 
 import time
 
+from pytest import approx as pytest_approx
+
 from src.data_layer.bybit_ws import (
+    BybitWSConnector,
     OrderBookLevel,
     Trade,
     WSBuffer,
@@ -134,3 +137,110 @@ def test_book_levels_from_bybit_msg_filters_zero_size():
     assert len(bids) == 1
     assert bids[0].price == 2000.0
     assert len(asks) == 1
+
+
+# -- handle_frame integration tests --------------------------------------
+def test_handle_frame_routes_trades_to_buffer():
+    buf = WSBuffer()
+    conn = BybitWSConnector(buf, symbol="XAUUSD")
+    frame = {
+        "topic": "publicTrade.XAUUSD",
+        "type": "snapshot",
+        "ts": 1_750_000_000_000,
+        "data": [
+            {"T": 1_750_000_000_000, "p": "2042.5", "v": "1.5", "S": "Buy"},
+            {"T": 1_750_000_000_001, "p": "2042.4", "v": "0.8", "S": "Sell"},
+        ],
+    }
+    conn.handle_frame(frame)
+    snap = buf.snapshot()
+    assert snap["trades_in_buffer"] == 2
+    assert snap["cvd_full"] == pytest_approx(0.7)
+
+
+def test_handle_frame_book_snapshot_replaces_state():
+    buf = WSBuffer()
+    conn = BybitWSConnector(buf, symbol="XAUUSD")
+    frame = {
+        "topic": "orderbook.50.XAUUSD",
+        "type": "snapshot",
+        "ts": 1_750_000_000_000,
+        "data": {
+            "s": "XAUUSD",
+            "b": [["2000", "10"], ["1999", "5"]],
+            "a": [["2001", "8"], ["2002", "3"]],
+        },
+    }
+    conn.handle_frame(frame)
+    snap = buf.snapshot()
+    assert snap["ob_bid_size"] == 15.0
+    assert snap["ob_ask_size"] == 11.0
+    assert snap["ob_spread"] == 1.0
+
+
+def test_handle_frame_book_delta_applies_changes():
+    buf = WSBuffer()
+    conn = BybitWSConnector(buf, symbol="XAUUSD")
+    # Establish snapshot
+    conn.handle_frame({
+        "topic": "orderbook.50.XAUUSD",
+        "type": "snapshot",
+        "data": {
+            "b": [["2000", "10"], ["1999", "5"]],
+            "a": [["2001", "8"], ["2002", "3"]],
+        },
+    })
+    # Apply delta: remove 1999 bid, add new 1998 bid, update 2001 ask
+    conn.handle_frame({
+        "topic": "orderbook.50.XAUUSD",
+        "type": "delta",
+        "data": {
+            "b": [["1999", "0"], ["1998", "20"]],
+            "a": [["2001", "12"]],
+        },
+    })
+    snap = buf.snapshot()
+    # bids: 2000=10, 1998=20  (1999 removed)
+    assert snap["ob_bid_size"] == 30.0
+    # asks: 2001=12, 2002=3
+    assert snap["ob_ask_size"] == 15.0
+
+
+def test_handle_frame_ignores_non_topic_frames():
+    """Subscription confirmations and pongs have no `topic` — must be skipped."""
+    buf = WSBuffer()
+    conn = BybitWSConnector(buf, symbol="XAUUSD")
+    # No raise; buffer unchanged
+    conn.handle_frame({"success": True, "ret_msg": "subscribe", "op": "subscribe"})
+    conn.handle_frame({"op": "pong"})
+    snap = buf.snapshot()
+    assert snap["trades_in_buffer"] == 0
+
+
+def test_handle_frame_ignores_unknown_topic():
+    buf = WSBuffer()
+    conn = BybitWSConnector(buf, symbol="XAUUSD")
+    conn.handle_frame({"topic": "kline.5.XAUUSD", "type": "snapshot", "data": []})
+    snap = buf.snapshot()
+    assert snap["trades_in_buffer"] == 0
+
+
+def test_handle_frame_swallows_malformed_data():
+    """A garbage entry inside a trades frame must not crash dispatch."""
+    buf = WSBuffer()
+    conn = BybitWSConnector(buf, symbol="XAUUSD")
+    frame = {
+        "topic": "publicTrade.XAUUSD",
+        "type": "snapshot",
+        "data": [
+            {"T": 1_750_000_000_000, "p": "2042.5", "v": "1.0", "S": "Buy"},
+            {"missing": "fields"},  # malformed
+            {"T": 1_750_000_000_002, "p": "2042.4", "v": "0.5", "S": "Sell"},
+        ],
+    }
+    conn.handle_frame(frame)
+    snap = buf.snapshot()
+    # The two well-formed trades land; malformed one is skipped
+    assert snap["trades_in_buffer"] == 2
+
+

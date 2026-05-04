@@ -10,12 +10,13 @@ background thread; the buffer is thread-safe via locks. The flow extractor
 opportunistically reads from the buffer; if the WS isn't running, it falls
 back to candle-based CVD approximation.
 
-This module deliberately does NOT depend on any specific WS library so the
-core ATLAS package stays light. Plug in `websocket-client`, `websockets`,
-or ccxt.pro by implementing `BybitWSConnector` against the published API.
+The runtime uses `websocket-client` (synchronous, callback-based). The
+network code is intentionally narrow — frame parsing + dispatch lives in
+pure functions / methods so it can be tested without a live socket.
 """
 from __future__ import annotations
 
+import json
 import logging
 import statistics
 import threading
@@ -166,13 +167,16 @@ class WSBuffer:
 
 
 class BybitWSConnector:
-    """Thin scaffolding for a background-thread WebSocket consumer.
+    """Background-thread WebSocket consumer for Bybit V5 public streams.
 
-    This is intentionally a stub: in production it connects to Bybit's
-    WebSocket API (`wss://stream.bybit.com/v5/public/linear`), subscribes
-    to `publicTrade.<symbol>` and `orderbook.50.<symbol>`, parses each
-    payload, and forwards into the buffer. The exact wire format is
-    operator-tunable, so we leave the network layer pluggable.
+    Subscribes to `publicTrade.<symbol>` and `orderbook.50.<symbol>`,
+    applies snapshots + deltas to the local order book, forwards trades
+    into the buffer. Reconnects with backoff via `websocket-client`'s
+    `run_forever(reconnect=...)`. JSON ping every 20s keeps the
+    connection alive (Bybit drops idle sockets).
+
+    Frame dispatch is in `handle_frame()` — a pure method that doesn't
+    touch the network. Tests inject parsed frames directly.
     """
 
     def __init__(
@@ -181,14 +185,24 @@ class BybitWSConnector:
         symbol: str = "XAUUSD",
         url: str = "wss://stream.bybit.com/v5/public/linear",
         on_error: Optional[Callable[[Exception], None]] = None,
+        reconnect_seconds: int = 5,
+        ping_interval_seconds: int = 20,
     ) -> None:
         self.buffer = buffer
         self.symbol = symbol
         self.url = url
         self.on_error = on_error
+        self.reconnect_seconds = reconnect_seconds
+        self.ping_interval_seconds = ping_interval_seconds
+        # Local order book state for delta application (price -> size)
+        self._bids: Dict[float, float] = {}
+        self._asks: Dict[float, float] = {}
+        self._book_lock = threading.RLock()
         self._thread: Optional[threading.Thread] = None
         self._stop = threading.Event()
+        self._ws_app: Optional[Any] = None  # websocket.WebSocketApp
 
+    # -- lifecycle -------------------------------------------------------
     def start(self) -> None:
         if self._thread is not None and self._thread.is_alive():
             return
@@ -199,19 +213,160 @@ class BybitWSConnector:
 
     def stop(self) -> None:
         self._stop.set()
+        if self._ws_app is not None:
+            try:
+                self._ws_app.close()
+            except Exception:  # noqa: BLE001
+                pass
         if self._thread is not None:
             self._thread.join(timeout=5.0)
             self._thread = None
         logger.info("WS thread stopped")
 
+    # -- frame dispatch (pure, testable) ---------------------------------
+    def handle_frame(self, frame: Dict[str, Any]) -> None:
+        """Dispatch a parsed Bybit V5 WS frame to the buffer + book state."""
+        # Subscription / pong acknowledgements have no `topic` and `success` field
+        if "topic" not in frame:
+            return
+        topic = frame.get("topic", "")
+        msg_type = frame.get("type")
+
+        if topic.startswith("publicTrade"):
+            data = frame.get("data") or []
+            for trade_msg in data:
+                trade = trade_from_bybit_msg(trade_msg)
+                if trade is not None:
+                    self.buffer.push_trade(trade)
+            return
+
+        if topic.startswith("orderbook"):
+            data = frame.get("data") or {}
+            if msg_type == "snapshot":
+                self._apply_book_snapshot(data)
+            elif msg_type == "delta":
+                self._apply_book_delta(data)
+            return
+
+    def _apply_book_snapshot(self, data: Dict[str, Any]) -> None:
+        with self._book_lock:
+            self._bids = {}
+            self._asks = {}
+            for price_str, size_str in data.get("b", []) or []:
+                try:
+                    price, size = float(price_str), float(size_str)
+                except (TypeError, ValueError):
+                    continue
+                if size > 0:
+                    self._bids[price] = size
+            for price_str, size_str in data.get("a", []) or []:
+                try:
+                    price, size = float(price_str), float(size_str)
+                except (TypeError, ValueError):
+                    continue
+                if size > 0:
+                    self._asks[price] = size
+        self._publish_book()
+
+    def _apply_book_delta(self, data: Dict[str, Any]) -> None:
+        with self._book_lock:
+            for price_str, size_str in data.get("b", []) or []:
+                try:
+                    price, size = float(price_str), float(size_str)
+                except (TypeError, ValueError):
+                    continue
+                if size == 0:
+                    self._bids.pop(price, None)
+                else:
+                    self._bids[price] = size
+            for price_str, size_str in data.get("a", []) or []:
+                try:
+                    price, size = float(price_str), float(size_str)
+                except (TypeError, ValueError):
+                    continue
+                if size == 0:
+                    self._asks.pop(price, None)
+                else:
+                    self._asks[price] = size
+        self._publish_book()
+
+    def _publish_book(self) -> None:
+        """Push the current top-N book state into the buffer."""
+        with self._book_lock:
+            bids = [OrderBookLevel(price=p, size=s) for p, s in self._bids.items()]
+            asks = [OrderBookLevel(price=p, size=s) for p, s in self._asks.items()]
+        self.buffer.update_book(bids, asks)
+
+    # -- network runtime (websocket-client) ------------------------------
     def _run(self) -> None:
-        """Override / subclass to plug in your WS client of choice."""
-        logger.warning(
-            "BybitWSConnector._run is a stub; subclass it with your WS client "
-            "(websocket-client, websockets, ccxt.pro) and forward to push_trade / update_book"
-        )
-        while not self._stop.wait(1.0):
-            pass
+        try:
+            import websocket  # type: ignore[import-not-found]
+        except ImportError:
+            logger.error(
+                "websocket-client not installed; pip install websocket-client. "
+                "WS thread exiting."
+            )
+            return
+
+        def on_open(ws: Any) -> None:
+            sub_msg = {
+                "op": "subscribe",
+                "args": [
+                    f"publicTrade.{self.symbol}",
+                    f"orderbook.50.{self.symbol}",
+                ],
+            }
+            ws.send(json.dumps(sub_msg))
+            logger.info("WS subscribed: %s", sub_msg["args"])
+
+        def on_message(ws: Any, message: str) -> None:
+            try:
+                frame = json.loads(message)
+            except json.JSONDecodeError:
+                logger.warning("WS received non-JSON frame, ignoring")
+                return
+            try:
+                self.handle_frame(frame)
+            except Exception as e:  # noqa: BLE001 — never crash the WS thread
+                logger.exception("WS frame handler raised: %s", e)
+                if self.on_error is not None:
+                    try:
+                        self.on_error(e)
+                    except Exception:  # noqa: BLE001
+                        pass
+
+        def on_error(ws: Any, error: BaseException) -> None:
+            logger.warning("WS error: %s", error)
+            if self.on_error is not None:
+                try:
+                    self.on_error(error if isinstance(error, Exception) else Exception(str(error)))
+                except Exception:  # noqa: BLE001
+                    pass
+
+        def on_close(ws: Any, code: Any, msg: Any) -> None:
+            logger.info("WS closed (code=%s, msg=%s)", code, msg)
+
+        # WebSocketApp.run_forever blocks; we loop here so that on shutdown
+        # `_stop` causes us to exit instead of perpetually reconnecting.
+        while not self._stop.is_set():
+            try:
+                self._ws_app = websocket.WebSocketApp(
+                    self.url,
+                    on_open=on_open,
+                    on_message=on_message,
+                    on_error=on_error,
+                    on_close=on_close,
+                )
+                self._ws_app.run_forever(
+                    ping_interval=self.ping_interval_seconds,
+                    ping_payload=json.dumps({"op": "ping"}),
+                )
+            except Exception as e:  # noqa: BLE001
+                logger.exception("WS run_forever raised: %s", e)
+            if self._stop.is_set():
+                break
+            logger.info("WS reconnecting in %ds", self.reconnect_seconds)
+            self._stop.wait(self.reconnect_seconds)
 
 
 def trade_from_bybit_msg(msg: Dict[str, Any]) -> Optional[Trade]:
