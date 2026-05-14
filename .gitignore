@@ -21,6 +21,11 @@ database/*.db
 database/*.db.backup
 *.bak
 
+# Phase 0 historical data store — keep the dir, exclude the parquet payloads
+data/**/*.parquet
+data/*.parquet
+!data/.gitkeep
+
 # Editor / OS
 .vscode/
 .idea/
