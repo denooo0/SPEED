@@ -31,5 +31,7 @@ data/*.parquet
 .idea/
 .DS_Store
 
-# Local Claude state (agent worktrees, local settings)
-.claude/
+# Local Claude state (agent worktrees, local settings) — but track committed skills
+.claude/*
+!.claude/skills/
+!.claude/skills/**
