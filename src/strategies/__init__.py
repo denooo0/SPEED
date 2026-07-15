@@ -1,0 +1,1 @@
+'''ATLAS deterministic trading strategies.'''
