@@ -1,0 +1,20 @@
+# Video research queue — operator-supplied trading videos for mechanism extraction.
+# Run: python scripts/extract_transcripts.py --from-file research/video_queue.txt
+# (must run in an environment with YouTube access — the ATLAS build sandbox blocks it)
+
+# --- individual videos (batch 1) ---
+https://www.youtube.com/watch?v=QJMrpl9vv34
+https://www.youtube.com/watch?v=529m6UETluc
+https://www.youtube.com/watch?v=TCFvsZeYvV8
+https://www.youtube.com/watch?v=o1jm-2WfTvk
+https://www.youtube.com/watch?v=YJedB4yszl8
+
+# --- playlist PLPlvZjthhP6ke1WC8-p2HGZlRDFJKa6NY (batch 2) ---
+# Tip: extract the whole playlist at once with:
+#   python scripts/extract_transcripts.py --playlist "https://www.youtube.com/playlist?list=PLPlvZjthhP6ke1WC8-p2HGZlRDFJKa6NY"
+https://www.youtube.com/watch?v=dIT4HTFYGGo
+https://www.youtube.com/watch?v=Cg0-CFJOJvg
+https://www.youtube.com/watch?v=isXicdayBwA
+https://www.youtube.com/watch?v=d2WeN92JjyM
+https://www.youtube.com/watch?v=3hCEOYvNggE
+https://www.youtube.com/watch?v=7WM8qdkanIY
