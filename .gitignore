@@ -33,6 +33,13 @@ experiments/*.parquet
 !experiments/.gitkeep
 !experiments/log/.gitkeep
 
+# Inbox CSV drops — GitHub web upload commits them explicitly (bypasses this),
+# but keep them out of routine local commits. Keep the folder + docs.
+inbox/*.csv
+inbox/*.CSV
+!inbox/.gitkeep
+!inbox/README.md
+
 # Editor / OS
 .vscode/
 .idea/
