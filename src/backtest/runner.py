@@ -100,8 +100,17 @@ class BacktestRunner:
         hypothesis_yaml: Union[Path, str, Dict[str, Any]],
         candles: pd.DataFrame,
         feature_pack_provider: Callable[[pd.Timestamp], Dict[str, Any]],
+        n_trials_override: Optional[int] = None,
     ) -> Dict[str, Any]:
-        """Run walk-forward + CPCV and return the verdict dict (see contract)."""
+        """Run walk-forward + CPCV and return the verdict dict (see contract).
+
+        ``n_trials_override``: when the caller tracks the total count of
+        hypotheses ever tested (e.g. ``HypothesisRegistry.total_trials()``),
+        pass it here so the Deflated Sharpe is deflated by the REAL number of
+        trials rather than the per-run CPCV strategy count. This is the
+        defense against the False Strategy Theorem — every untracked trial
+        silently inflates the reportable Sharpe.
+        """
         hypothesis = self._load_hypothesis(hypothesis_yaml)
         strategy = self.strategy_factory(hypothesis)
 
@@ -154,10 +163,15 @@ class BacktestRunner:
         skew = float(returns.skew()) if len(returns) > 2 else 0.0
         # pandas .kurtosis() is excess kurtosis; DSR formula expects raw kurt.
         kurt = float(returns.kurtosis() + 3.0) if len(returns) > 3 else 3.0
-        n_trials = self.cpcv_params.get("n_strategies", 1)
+        # Prefer the caller-supplied real trial count (registry.total_trials())
+        # over the per-run CPCV strategy count — the former is the honest N.
+        if n_trials_override is not None:
+            n_trials = max(1, int(n_trials_override))
+        else:
+            n_trials = max(1, int(self.cpcv_params.get("n_strategies", 1)))
         dsr = compute_deflated_sharpe(
             observed_sr=sr_per_period,
-            n_trials=max(1, int(n_trials)),
+            n_trials=n_trials,
             n_samples=n_samples,
             skew=skew,
             kurt=kurt,

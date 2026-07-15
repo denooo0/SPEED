@@ -44,6 +44,7 @@ class AtlasBrain:
             client = anthropic.Anthropic()
         self.client = client
         self.cached_system = self._load_cached_system()
+        self.last_usage: Any = None  # token usage from the most recent analyze()
 
     def _load_cached_system(self) -> str:
         mandate = Path(self.config.mandate_path).read_text()
@@ -97,7 +98,16 @@ class AtlasBrain:
             output_format=SituationReport,
         )
         self._log_usage(response)
-        return response.parsed_output
+        # Expose token usage to downstream cost telemetry (backtest CostTracker
+        # reads `sr.usage`). Store on the brain and best-effort attach to the SR.
+        self.last_usage = getattr(response, "usage", None)
+        sr = response.parsed_output
+        if self.last_usage is not None:
+            try:
+                object.__setattr__(sr, "usage", self.last_usage)
+            except (AttributeError, ValueError):
+                pass  # Pydantic model may forbid extra attrs; brain.last_usage still holds it
+        return sr
 
     @staticmethod
     def _format_input(

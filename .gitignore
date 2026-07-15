@@ -25,6 +25,13 @@ database/*.db.backup
 data/**/*.parquet
 data/*.parquet
 !data/.gitkeep
+!data/regimes/.gitkeep
+
+# Track F experiment storage — keep the dirs, exclude the payloads
+experiments/log/*.json
+experiments/*.parquet
+!experiments/.gitkeep
+!experiments/log/.gitkeep
 
 # Editor / OS
 .vscode/
