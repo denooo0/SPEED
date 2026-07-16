@@ -78,6 +78,14 @@ def synthetic_candles(n: int = 6000, seed: int = 11) -> pd.DataFrame:
     )
 
 
+def empty_feature_provider(_ts: pd.Timestamp) -> Dict[str, Any]:
+    """No-op provider. The deterministic HtfRetracementShort strategy computes
+    its own rolling MA from the bar stream and does not read feature packs, so
+    we skip the O(N^2) FeatureReplayer precompute entirely. The LLM-filter path
+    (later) will use the real provider."""
+    return {}
+
+
 def build_feature_provider(candles: pd.DataFrame, warmup: int = 100):
     """Return a callable ts -> feature_pack dict, backed by FeatureReplayer.
 
@@ -103,6 +111,9 @@ def main(argv: List[str]) -> int:
     p.add_argument("--symbol", default="XAUUSD")
     p.add_argument("--timeframe", default="5m")
     p.add_argument("--synthetic-bars", type=int, default=6000)
+    p.add_argument("--with-features", action="store_true",
+                   help="precompute the 4-lens FeaturePack per bar (needed only for "
+                        "the LLM-filter path; the deterministic strategy ignores it).")
     args = p.parse_args(argv[1:])
 
     real = load_real_candles(args.symbol, args.timeframe)
@@ -136,7 +147,11 @@ def main(argv: List[str]) -> int:
                                max(200, int(len(candles) * 0.15))),
     )
 
-    provider = build_feature_provider(candles)
+    if args.with_features:
+        print("[features] precomputing 4-lens packs (slow) …")
+        provider = build_feature_provider(candles)
+    else:
+        provider = empty_feature_provider  # deterministic strategy is self-contained
     hypothesis = {"id": args.setup, "params": {}}
 
     print(f"[run] evaluating setup '{args.setup}' …")

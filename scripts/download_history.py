@@ -180,7 +180,7 @@ def ingest_csv(csv_path: str, symbol: str, timeframe: str) -> None:
         return
 
     out = df[["open", "high", "low", "close"]].astype(float).copy()
-    vol_col = next((c for c in ("volume", "tickvol", "vol", "real_volume") if c in df.columns), None)
+    vol_col = next((c for c in ("volume", "tick_volume", "tickvol", "vol", "real_volume") if c in df.columns), None)
     out["volume"] = df[vol_col].astype(float) if vol_col else 0.0
     # Drop exact-duplicate timestamps (MT5 exports can repeat the last bar).
     out = out[~out.index.duplicated(keep="last")]
