@@ -309,17 +309,26 @@ class EventDrivenSimulator:
         latency_frac = min(1.0, self.cost_model.latency_seconds / float(self.bar_seconds))
         # Worst-case fill price adjusted for latency: long pays up toward bar high,
         # short receives down toward bar low.
+        # Floor risk at a realistic minimum fraction of price. Without this, a
+        # next-bar-open fill that gaps to/through the intended stop leaves
+        # (net_entry - stop) ~ 0, and the R-multiple = move / risk explodes to
+        # absurd values (millions of R). Equity (gross_return) is unaffected —
+        # it always uses actual prices — but the R-multiple metric becomes
+        # meaningless without this floor. 5bp of price is a conservative floor.
+        min_risk = 0.0
         if order.direction == "long":
             latency_drift_price = (fill_bar.high - fill_bar.open) * latency_frac
             base_fill = fill_bar.open + latency_drift_price
             # spread + slippage charged in bps of the base level
             net_entry = base_fill * (1.0 + _bps(entry_cost_bps))
-            risk_per_unit = max(net_entry - order.stop_loss, 1e-12)
+            min_risk = net_entry * _bps(5.0)
+            risk_per_unit = max(net_entry - order.stop_loss, min_risk)
         else:
             latency_drift_price = (fill_bar.open - fill_bar.low) * latency_frac
             base_fill = fill_bar.open - latency_drift_price
             net_entry = base_fill * (1.0 - _bps(entry_cost_bps))
-            risk_per_unit = max(order.stop_loss - net_entry, 1e-12)
+            min_risk = net_entry * _bps(5.0)
+            risk_per_unit = max(order.stop_loss - net_entry, min_risk)
 
         return _OpenPosition(
             direction=order.direction,
