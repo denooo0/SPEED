@@ -47,3 +47,6 @@ inbox/*.CSV
 
 # Local Claude state (agent worktrees, local settings)
 .claude/
+
+# Copilot live journal (personal trade data)
+memory/copilot/*.jsonl
