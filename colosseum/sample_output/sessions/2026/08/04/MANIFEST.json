@@ -1,0 +1,22 @@
+{
+  "file_count": 3,
+  "files": [
+    {
+      "bytes": 2064,
+      "path": "SESSION.json",
+      "sha": "d7d9067ceb1c5910e690adf4b5daae75"
+    },
+    {
+      "bytes": 735,
+      "path": "SESSION.md",
+      "sha": "4c83caaf23cf73427b2982c75ebbc426"
+    },
+    {
+      "bytes": 92885,
+      "path": "standdowns.jsonl",
+      "sha": "8ca5b997f64ca4d5b35377b174ae28ed"
+    }
+  ],
+  "session_date": "2026-08-04",
+  "total_bytes": 95684
+}

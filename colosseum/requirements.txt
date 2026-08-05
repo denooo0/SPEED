@@ -1,0 +1,24 @@
+# colosseum runs its engine and its full 124-check verification suite on the
+# STANDARD LIBRARY ALONE. Every third-party import below is lazy (inside the
+# function that needs it), so nothing here is required to run:
+#
+#     python -m colosseum.cli selftest
+#
+# Install only what the step you are actually on requires.
+
+# STEP 1 — Telegram capture (MTProto). Required for backfill and live capture.
+telethon>=1.34.0
+
+# STEP 3/4/5 — only if your bar files are Parquet. CSV needs nothing.
+pyarrow>=14.0.0
+
+# STEP 1c — only if a channel posts signals as IMAGES and you pass
+# --download-images. Also needs the tesseract binary on PATH:
+#     apt-get install tesseract-ocr    /    brew install tesseract
+# OCR is the weak link in the whole pipeline; prefer text channels.
+pytesseract>=0.3.10
+Pillow>=10.0.0
+
+# LLM strategist seats (colosseum/llm/). Optional — the engine runs without
+# them; `cli doctor` reports them as unwired rather than failing.
+anthropic>=0.92.0

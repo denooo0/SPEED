@@ -1,0 +1,202 @@
+{
+  "file_count": 39,
+  "files": [
+    {
+      "bytes": 2081,
+      "path": "SESSION.json",
+      "sha": "bb6cabb4dbfba6997b18aaeaa8aeab6e"
+    },
+    {
+      "bytes": 738,
+      "path": "SESSION.md",
+      "sha": "7bd724e4974832b988a55f3b8bbabc6e"
+    },
+    {
+      "bytes": 2217,
+      "path": "signals/SIG-20260803-0001-C-long.json",
+      "sha": "79aa139a90d57124ebf73c7acfdc1978"
+    },
+    {
+      "bytes": 1918,
+      "path": "signals/SIG-20260803-0001-C-long.md",
+      "sha": "09f9a42fa5eb0271a5c4d4415d366550"
+    },
+    {
+      "bytes": 2205,
+      "path": "signals/SIG-20260803-0002-B-long.json",
+      "sha": "c165cdd13b9497dc2350ffb7bed15c9a"
+    },
+    {
+      "bytes": 1921,
+      "path": "signals/SIG-20260803-0002-B-long.md",
+      "sha": "a82ccaf47e66453d5aefcf62f04c5d03"
+    },
+    {
+      "bytes": 2190,
+      "path": "signals/SIG-20260803-0003-C-long.json",
+      "sha": "55e9c500b5a469f1ce655140f54ad12b"
+    },
+    {
+      "bytes": 1903,
+      "path": "signals/SIG-20260803-0003-C-long.md",
+      "sha": "07e73db381243140ffa13d8679334fe1"
+    },
+    {
+      "bytes": 2183,
+      "path": "signals/SIG-20260803-0004-C-long.json",
+      "sha": "5553f2f2ab6f7caa3ecd823ae779745c"
+    },
+    {
+      "bytes": 1903,
+      "path": "signals/SIG-20260803-0004-C-long.md",
+      "sha": "0eec46fe8730c6cb3ea63e42d65ace98"
+    },
+    {
+      "bytes": 2327,
+      "path": "signals/SIG-20260803-0005-B-long.json",
+      "sha": "33c2fde012716a8f8d053d4fe959a412"
+    },
+    {
+      "bytes": 1995,
+      "path": "signals/SIG-20260803-0005-B-long.md",
+      "sha": "ae4368f4218e0a4d6193f388fce81945"
+    },
+    {
+      "bytes": 2309,
+      "path": "signals/SIG-20260803-0006-B-long.json",
+      "sha": "0eb207e20849e70761618b1ed42a4544"
+    },
+    {
+      "bytes": 1985,
+      "path": "signals/SIG-20260803-0006-B-long.md",
+      "sha": "0c2352bd0d53dc69ff7e784ea8992a28"
+    },
+    {
+      "bytes": 2291,
+      "path": "signals/SIG-20260803-0007-B-long.json",
+      "sha": "ae78b7202f98afd256e6e0fcc3fc1d89"
+    },
+    {
+      "bytes": 1971,
+      "path": "signals/SIG-20260803-0007-B-long.md",
+      "sha": "56d78edf03db27d349887d12ed1e2174"
+    },
+    {
+      "bytes": 2338,
+      "path": "signals/SIG-20260803-0008-B-long.json",
+      "sha": "4508ffd93d9dffe0686a28f2e2ccac8e"
+    },
+    {
+      "bytes": 1999,
+      "path": "signals/SIG-20260803-0008-B-long.md",
+      "sha": "675492fdcdb3efaa9d72c73169a43021"
+    },
+    {
+      "bytes": 2237,
+      "path": "signals/SIG-20260803-0009-B-long.json",
+      "sha": "bf3bc85592ebcd7d012feb887ff765e7"
+    },
+    {
+      "bytes": 1936,
+      "path": "signals/SIG-20260803-0009-B-long.md",
+      "sha": "da499c6762ff2ee2bc056569995508b5"
+    },
+    {
+      "bytes": 2372,
+      "path": "signals/SIG-20260803-0010-B-long.json",
+      "sha": "f28c40419099a37da0d7b2a62c488e12"
+    },
+    {
+      "bytes": 1991,
+      "path": "signals/SIG-20260803-0010-B-long.md",
+      "sha": "e0fc2c33d610d2fd727ce65a98b24207"
+    },
+    {
+      "bytes": 2283,
+      "path": "signals/SIG-20260803-0011-B-long.json",
+      "sha": "e08e8396277f75806d4a46068af43d08"
+    },
+    {
+      "bytes": 1964,
+      "path": "signals/SIG-20260803-0011-B-long.md",
+      "sha": "0b0dfdc59d362d0f88bda0ea4c55b4ce"
+    },
+    {
+      "bytes": 2269,
+      "path": "signals/SIG-20260803-0012-B-long.json",
+      "sha": "e4543fb9deae10bec2d01e6964f4a190"
+    },
+    {
+      "bytes": 1955,
+      "path": "signals/SIG-20260803-0012-B-long.md",
+      "sha": "d86d57ee77089b34dd8a04327b626ed0"
+    },
+    {
+      "bytes": 1693,
+      "path": "signals/SIG-20260803-0013-B-long.json",
+      "sha": "b620a3a3bc0c395f0965cd77dcda72b3"
+    },
+    {
+      "bytes": 1445,
+      "path": "signals/SIG-20260803-0013-B-long.md",
+      "sha": "285bf3c0fbf4ee4a3d58c7442f1e7650"
+    },
+    {
+      "bytes": 1689,
+      "path": "signals/SIG-20260803-0014-B-long.json",
+      "sha": "784cbe88a450d73e72bc32d65175d6c0"
+    },
+    {
+      "bytes": 1441,
+      "path": "signals/SIG-20260803-0014-B-long.md",
+      "sha": "194c80b17e8d1c0084cb934d3206e4fe"
+    },
+    {
+      "bytes": 3009,
+      "path": "signals/SIG-20260803-0015-B-long.json",
+      "sha": "4b196c2ec993bfc133007a3ada375109"
+    },
+    {
+      "bytes": 2402,
+      "path": "signals/SIG-20260803-0015-B-long.md",
+      "sha": "f990b5ff6f430c75d3944ad7d296960e"
+    },
+    {
+      "bytes": 1690,
+      "path": "signals/SIG-20260803-0016-B-long.json",
+      "sha": "2e67f23f3fc1727d8d4130cd6583c50f"
+    },
+    {
+      "bytes": 1442,
+      "path": "signals/SIG-20260803-0016-B-long.md",
+      "sha": "41c8d966417f79a7e67e0d58f66ff8ee"
+    },
+    {
+      "bytes": 1693,
+      "path": "signals/SIG-20260803-0017-B-long.json",
+      "sha": "ddd73aba71c4708b3bf0a8865ec42548"
+    },
+    {
+      "bytes": 1445,
+      "path": "signals/SIG-20260803-0017-B-long.md",
+      "sha": "fbe436f64cf0e374ad961e1cc75e91b6"
+    },
+    {
+      "bytes": 1693,
+      "path": "signals/SIG-20260803-0018-B-long.json",
+      "sha": "33fbad2eccdecad2a5b2b780db98571f"
+    },
+    {
+      "bytes": 1445,
+      "path": "signals/SIG-20260803-0018-B-long.md",
+      "sha": "f3e3c108d958fb367705cb4355381f5e"
+    },
+    {
+      "bytes": 2198255,
+      "path": "standdowns.jsonl",
+      "sha": "a74e6ae59e640cd9a3dd00e7c7f17e28"
+    }
+  ],
+  "session_date": "2026-08-03",
+  "total_bytes": 2272823
+}

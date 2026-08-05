@@ -1,0 +1,75 @@
+{
+  "arm_id": "wide",
+  "code_version": "colosseum-0.1.0",
+  "confluence_with": [],
+  "conviction": 0.8266,
+  "conviction_raw": 0.8266,
+  "counter_case": "If this is a strong-trend day the signal gets run over, which is why conviction is capped here.",
+  "direction": "long",
+  "edge_after_cost": 0.86,
+  "entry": 2399.62,
+  "entry_type": "trigger",
+  "frame_hash": "803199c30b2c6f62183a87b3dec54f5a",
+  "horizon_min": 49,
+  "invalidation": "a close back beyond 2399.61 on expanding delta means the trapped side was not trapped; thesis void before the stop",
+  "is_exploration": false,
+  "lens": "VWAP Mean-Reverter",
+  "liquidity_session": "LONDON",
+  "mechanism": "Price -2.93 sigma from VWAP with RVOL 1.00 -- stretched and no longer supported by participation.",
+  "note": "single-seat",
+  "outcome": {
+    "lesson_tags": [
+      "target_beyond_realistic_range"
+    ],
+    "mae_r": -1.418,
+    "mechanism_verdict": "false",
+    "mfe_r": 1.029,
+    "path_match": 0.0,
+    "path_realized": [
+      "retest",
+      "stop"
+    ],
+    "realized_r": -1.25,
+    "resolution": "stop",
+    "reward": {
+      "calibration": -1.7333,
+      "direction": -0.5,
+      "mechanism": -1.5,
+      "note": "clean",
+      "path": -0.8,
+      "penalties": 0.0,
+      "risk_adjusted": -0.5546,
+      "total": -5.0879
+    },
+    "time_to_outcome_s": 587
+  },
+  "predicted_path": "reject at the band then mean revert back to test VWAP",
+  "regime": {
+    "atr_pct": 0.0,
+    "rvol": 1.004,
+    "trend_htf": "unknown",
+    "trend_ltf": "unknown",
+    "vol_band": "unknown"
+  },
+  "schema_version": "fs-3",
+  "seat_id": "C",
+  "session_date": "2026-08-03",
+  "shelf_weight": 0.3333,
+  "signal_id": "SIG-20260803-0001-C-long",
+  "stop": 2398.71,
+  "stop_reason": "beyond the vwap_band at 2399.61 plus 0.9x ATR buffer; a close past it kills the thesis",
+  "t_ns": 1785744913000000000,
+  "targets": [
+    {
+      "label": "TP1",
+      "price": 2400.98,
+      "reason": "1.5R -- first structural objective"
+    },
+    {
+      "label": "TP2",
+      "price": 2401.9,
+      "reason": "2.5R -- measured move completion"
+    }
+  ],
+  "thesis": "VWAP Mean-Reverter: two_sigma_exhaustion at 2399.61. Fade the exhausted side back toward fair value."
+}

@@ -1,0 +1,80 @@
+{
+  "arm_id": "tight_fast",
+  "code_version": "colosseum-0.1.0",
+  "confluence_with": [],
+  "conviction": 0.6905,
+  "conviction_raw": 0.6905,
+  "counter_case": "If this is a strong-trend day the signal gets run over, which is why conviction is capped here.",
+  "direction": "long",
+  "edge_after_cost": 3.69,
+  "entry": 2395.11,
+  "entry_type": "trigger",
+  "frame_hash": "0b10f98d7d5dd96a2bd2c77c859b44e3",
+  "horizon_min": 31,
+  "invalidation": "a close back beyond 2391.63 on expanding delta means the trapped side was not trapped; thesis void before the stop",
+  "is_exploration": false,
+  "lens": "Divergence Hunter",
+  "liquidity_session": "LONDON",
+  "mechanism": "hidden_bullish of strength 0.301 stacked across 1 timeframe(s): momentum has stopped confirming price.",
+  "note": "single-seat",
+  "outcome": {
+    "lesson_tags": [],
+    "mae_r": -1.121,
+    "mechanism_verdict": "false",
+    "mfe_r": 0.567,
+    "path_match": 0.1778,
+    "path_realized": [
+      "absorb",
+      "bos_down",
+      "retest",
+      "test_vwap",
+      "bos_down",
+      "absorb",
+      "bos_down",
+      "choch_down",
+      "stop"
+    ],
+    "realized_r": -1.25,
+    "resolution": "stop",
+    "reward": {
+      "calibration": -0.9071,
+      "direction": -0.5,
+      "mechanism": -1.5,
+      "note": "clean",
+      "path": -0.5155,
+      "penalties": 0.0,
+      "risk_adjusted": -0.5546,
+      "total": -3.9773
+    },
+    "time_to_outcome_s": 1800
+  },
+  "predicted_path": "reject at the divergent pivot, reclaim VWAP then trend to target",
+  "regime": {
+    "atr_pct": 0.11934,
+    "rvol": 0.985,
+    "trend_htf": "unknown",
+    "trend_ltf": "range",
+    "vol_band": "high"
+  },
+  "schema_version": "fs-3",
+  "seat_id": "B",
+  "session_date": "2026-08-03",
+  "shelf_weight": 0.3398,
+  "signal_id": "SIG-20260803-0005-B-long",
+  "stop": 2390.91,
+  "stop_reason": "beyond the divergence_pivot at 2391.63 plus 0.25x ATR buffer; a close past it kills the thesis",
+  "t_ns": 1785757200000000000,
+  "targets": [
+    {
+      "label": "TP1",
+      "price": 2399.3,
+      "reason": "1.0R -- first structural objective"
+    },
+    {
+      "label": "TP2",
+      "price": 2402.66,
+      "reason": "1.8R -- measured move completion"
+    }
+  ],
+  "thesis": "Divergence Hunter: hidden_bullish at 2391.63. Fade the exhausted side back toward fair value."
+}

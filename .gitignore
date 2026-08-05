@@ -13,6 +13,9 @@ env/
 config.local.yaml
 .env
 .env.*
+# ...but the credential-less template must be tracked, or nobody knows what to fill in.
+!*.env.example
+!.env.example
 
 # Runtime artifacts
 logs/*.log
@@ -50,3 +53,22 @@ inbox/*.CSV
 
 # Copilot live journal (personal trade data)
 memory/copilot/*.jsonl
+
+# --- colosseum ---------------------------------------------------------------
+# Telegram session files are CREDENTIALS. Holding one is holding the account —
+# no password, no 2FA prompt. Never let these near a commit.
+*.session
+*.session-journal
+
+# MIRROR archives: other people's channel content, and large. `deletions.jsonl`
+# is the survivorship evidence — back it up somewhere, just not in git.
+mirror_data/
+deletions.jsonl
+
+# Engine runtime state (ledger, WAL, journals, generated sessions/retros).
+# colosseum/sample_output/ is deliberately NOT ignored — it is checked-in
+# reference output showing what a run should look like.
+colosseum_state/
+colosseum.json
+colosseum/**/__pycache__/
+

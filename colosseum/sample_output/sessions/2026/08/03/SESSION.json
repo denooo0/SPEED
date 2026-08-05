@@ -1,0 +1,94 @@
+{
+  "calibration": {
+    "B": {
+      "base_rate": 0.2,
+      "brier": 0.4187243820282696,
+      "n": 10,
+      "overconfidence": 0.5154440242944711,
+      "reliability": 0.28539104869493626,
+      "resolution": 0.026666666666666665,
+      "uncertainty": 0.16000000000000003
+    },
+    "C": {
+      "base_rate": 0.0,
+      "brier": 0.5580753157829734,
+      "n": 3,
+      "overconfidence": 0.7441859063247462,
+      "reliability": 0.5580753157829734,
+      "resolution": 0.0,
+      "uncertainty": 0.0
+    }
+  },
+  "code_version": "colosseum-0.1.0",
+  "health": {
+    "active_verdicts": [],
+    "recent": [],
+    "state": "HEALTHY",
+    "transitions": 0
+  },
+  "r": -10.244000000000002,
+  "scoreboard": [
+    {
+      "avg_r": 0.0,
+      "avg_reward": 0.0,
+      "brier": 0.25,
+      "distinctness": 0.0,
+      "elo": 1500.0,
+      "lens": "Wyckoff Accountant",
+      "mechanism_rate": 0.0,
+      "n": 0,
+      "peak_elo": 1500.0,
+      "rank": 1,
+      "seat_id": "A",
+      "shelf_weight": 0.4926,
+      "status": "active",
+      "win_rate": 0.0
+    },
+    {
+      "avg_r": -1.25,
+      "avg_reward": -4.5869,
+      "brier": 0.5581,
+      "distinctness": 0.0,
+      "elo": 1472.0,
+      "lens": "VWAP Mean-Reverter",
+      "mechanism_rate": 0.0,
+      "n": 3,
+      "peak_elo": 1500.0,
+      "rank": 2,
+      "seat_id": "C",
+      "shelf_weight": 0.3474,
+      "status": "active",
+      "win_rate": 0.0
+    },
+    {
+      "avg_r": -0.6494,
+      "avg_reward": -3.4644,
+      "brier": 0.4126,
+      "distinctness": 1.0,
+      "elo": 1410.0,
+      "lens": "Divergence Hunter",
+      "mechanism_rate": 0.0,
+      "n": 10,
+      "peak_elo": 1500.0,
+      "rank": 3,
+      "seat_id": "B",
+      "shelf_weight": 0.16,
+      "status": "active",
+      "win_rate": 0.2
+    }
+  ],
+  "session_date": "2026-08-03",
+  "signals": 18,
+  "throughput": {
+    "diagnosis": "on target",
+    "meeting_target": true,
+    "rejections_by_reason": {
+      "correlation_cap": 5276,
+      "cost_gate": 394,
+      "seat_cooldown": 4236
+    },
+    "signals_per_day": 18.0,
+    "target": 5.0
+  },
+  "wins": 2
+}

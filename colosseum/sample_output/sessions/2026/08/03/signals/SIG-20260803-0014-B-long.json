@@ -1,0 +1,49 @@
+{
+  "arm_id": "wide_runner",
+  "code_version": "colosseum-0.1.0",
+  "confluence_with": [],
+  "conviction": 0.7738,
+  "conviction_raw": 0.7738,
+  "counter_case": "If this is a strong-trend day the signal gets run over, which is why conviction is capped here.",
+  "direction": "long",
+  "edge_after_cost": 12.98,
+  "entry": 2383.08,
+  "entry_type": "trigger",
+  "frame_hash": "b74f1e827c42c24d120958f073763ef8",
+  "horizon_min": 72,
+  "invalidation": "a close back beyond 2379.15 on expanding delta means the trapped side was not trapped; thesis void before the stop",
+  "is_exploration": false,
+  "lens": "Divergence Hunter",
+  "liquidity_session": "NY_LATE",
+  "mechanism": "regular_bullish of strength 0.330 stacked across 2 timeframe(s): momentum has stopped confirming price.",
+  "note": "single-seat",
+  "predicted_path": "reject at the divergent pivot, reclaim VWAP then trend to target",
+  "regime": {
+    "atr_pct": 0.068,
+    "rvol": 0.974,
+    "trend_htf": "down",
+    "trend_ltf": "up",
+    "vol_band": "normal"
+  },
+  "schema_version": "fs-3",
+  "seat_id": "B",
+  "session_date": "2026-08-03",
+  "shelf_weight": 0.1683,
+  "signal_id": "SIG-20260803-0014-B-long",
+  "stop": 2377.69,
+  "stop_reason": "beyond the divergence_pivot at 2379.15 plus 0.9x ATR buffer; a close past it kills the thesis",
+  "t_ns": 1785783900000000000,
+  "targets": [
+    {
+      "label": "TP1",
+      "price": 2396.56,
+      "reason": "2.5R -- first structural objective"
+    },
+    {
+      "label": "TP2",
+      "price": 2410.03,
+      "reason": "5.0R -- measured move completion"
+    }
+  ],
+  "thesis": "Divergence Hunter: regular_bullish at 2379.15. Fade the exhausted side back toward fair value."
+}

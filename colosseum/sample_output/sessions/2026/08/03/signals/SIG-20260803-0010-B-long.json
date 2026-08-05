@@ -1,0 +1,80 @@
+{
+  "arm_id": "wide",
+  "code_version": "colosseum-0.1.0",
+  "confluence_with": [],
+  "conviction": 0.7262,
+  "conviction_raw": 0.7262,
+  "counter_case": "If this is a strong-trend day the signal gets run over, which is why conviction is capped here.",
+  "direction": "long",
+  "edge_after_cost": 0.9,
+  "entry": 2385.56,
+  "entry_type": "trigger",
+  "frame_hash": "dd163b7972d63c1852f60ee7fe26f911",
+  "horizon_min": 49,
+  "invalidation": "a close back beyond 2386.55 on expanding delta means the trapped side was not trapped; thesis void before the stop",
+  "is_exploration": false,
+  "lens": "Divergence Hunter",
+  "liquidity_session": "NY_OVERLAP",
+  "mechanism": "hidden_bullish of strength 0.345 stacked across 1 timeframe(s): momentum has stopped confirming price.",
+  "note": "single-seat",
+  "outcome": {
+    "lesson_tags": [
+      "right_for_wrong_reason"
+    ],
+    "mae_r": -0.379,
+    "mechanism_verdict": "false",
+    "mfe_r": 3.191,
+    "path_match": 0.3714,
+    "path_realized": [
+      "sweep_low",
+      "reject",
+      "bos_down",
+      "retest",
+      "target",
+      "bos_down",
+      "target"
+    ],
+    "realized_r": 2.255,
+    "resolution": "tp2",
+    "reward": {
+      "calibration": 0.7002,
+      "direction": 0.5,
+      "mechanism": -2.25,
+      "note": "RIGHT FOR THE WRONG REASON \u2014 punished above the win",
+      "path": -0.2058,
+      "penalties": 0.0,
+      "risk_adjusted": 0.8102,
+      "total": -0.4454
+    },
+    "time_to_outcome_s": 571
+  },
+  "predicted_path": "reject at the divergent pivot, reclaim VWAP then trend to target",
+  "regime": {
+    "atr_pct": 0.08938,
+    "rvol": 0.949,
+    "trend_htf": "unknown",
+    "trend_ltf": "down",
+    "vol_band": "normal"
+  },
+  "schema_version": "fs-3",
+  "seat_id": "B",
+  "session_date": "2026-08-03",
+  "shelf_weight": 0.2157,
+  "signal_id": "SIG-20260803-0010-B-long",
+  "stop": 2384.63,
+  "stop_reason": "beyond the divergence_pivot at 2386.55 plus 0.9x ATR buffer; a close past it kills the thesis",
+  "t_ns": 1785775229000000000,
+  "targets": [
+    {
+      "label": "TP1",
+      "price": 2386.96,
+      "reason": "1.5R -- first structural objective"
+    },
+    {
+      "label": "TP2",
+      "price": 2387.89,
+      "reason": "2.5R -- measured move completion"
+    }
+  ],
+  "thesis": "Divergence Hunter: hidden_bullish at 2386.55. Fade the exhausted side back toward fair value."
+}
